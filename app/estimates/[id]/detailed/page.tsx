@@ -13,9 +13,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-export default async function DetailedEstimatePage({ params }: { params: { id: string } }) {
+export default async function DetailedEstimatePage(context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params
   const estimate = await prisma.estimate.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       workItems: {
         include: {
@@ -35,7 +36,7 @@ export default async function DetailedEstimatePage({ params }: { params: { id: s
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <Link href={`/estimates/${params.id}`}>
+          <Link href={`/estimates/${id}`}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Estimate
@@ -54,7 +55,7 @@ export default async function DetailedEstimatePage({ params }: { params: { id: s
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link
-                    href={`/api/estimates/${params.id}/export/detailed-pdf`}
+                    href={`/api/estimates/${id}/export/detailed-pdf`}
                     target="_blank"
                     className="cursor-pointer"
                   >
@@ -64,7 +65,7 @@ export default async function DetailedEstimatePage({ params }: { params: { id: s
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link
-                    href={`/api/estimates/${params.id}/export/detailed-excel`}
+                    href={`/api/estimates/${id}/export/detailed-excel`}
                     target="_blank"
                     className="cursor-pointer"
                   >
@@ -74,7 +75,7 @@ export default async function DetailedEstimatePage({ params }: { params: { id: s
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Link href={`/estimates/${params.id}/abstract`}>
+            <Link href={`/estimates/${id}/abstract`}>
               <Button>View Abstract</Button>
             </Link>
           </div>

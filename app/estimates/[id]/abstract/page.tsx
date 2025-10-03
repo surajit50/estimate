@@ -5,9 +5,10 @@ import { ArrowLeft, Download, FileSpreadsheet } from "lucide-react"
 import { AbstractView } from "@/components/abstract-view"
 import { notFound } from "next/navigation"
 
-export default async function AbstractPage({ params }: { params: { id: string } }) {
+export default async function AbstractPage(context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params
   const estimate = await prisma.estimate.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       workItems: {
         include: {
@@ -33,16 +34,16 @@ export default async function AbstractPage({ params }: { params: { id: string } 
             </Button>
           </Link>
           <div className="flex gap-2">
-            <Link href={`/estimates/${params.id}/work-items`}>
+            <Link href={`/estimates/${id}/work-items`}>
               <Button variant="outline">Edit Work Items</Button>
             </Link>
-            <Link href={`/api/estimates/${params.id}/export/pdf`} target="_blank">
+            <Link href={`/api/estimates/${id}/export/pdf`} target="_blank">
               <Button variant="outline">
                 <Download className="h-4 w-4 mr-2" />
                 Export PDF
               </Button>
             </Link>
-            <Link href={`/api/estimates/${params.id}/export/excel`} target="_blank">
+            <Link href={`/api/estimates/${id}/export/excel`} target="_blank">
               <Button variant="outline">
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
                 Export Excel
