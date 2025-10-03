@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Eye, Edit, Trash2, FileText } from "lucide-react"
+import { Eye, Edit, Trash2, FileText, PlusCircle } from "lucide-react"
 import { DeleteEstimateDialog } from "@/components/delete-estimate-dialog"
 
 interface Estimate {

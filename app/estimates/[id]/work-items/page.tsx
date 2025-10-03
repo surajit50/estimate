@@ -5,10 +5,11 @@ import { ArrowLeft } from "lucide-react"
 import { WorkItemsManager } from "@/components/work-items-manager"
 import { notFound } from "next/navigation"
 
-export default async function WorkItemsPage({ params }: { params: { id: string } }) {
+export default async function WorkItemsPage(context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params
   const [estimate, units, rates] = await Promise.all([
     prisma.estimate.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         workItems: {
           include: {
@@ -43,7 +44,7 @@ export default async function WorkItemsPage({ params }: { params: { id: string }
               Back to Dashboard
             </Button>
           </Link>
-          <Link href={`/estimates/${params.id}/abstract`}>
+          <Link href={`/estimates/${id}/abstract`}>
             <Button>View Abstract</Button>
           </Link>
         </div>

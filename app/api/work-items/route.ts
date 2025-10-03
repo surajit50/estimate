@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
         estimateId,
         itemNo,
         pageRef: pageRef?.trim() || null,
-        itemRef: itemRef?.trim() || null,
+        // itemRef field removed from schema; retained in request but not stored
         description: description.trim(),
         unitId,
         rate: parseFloat(rate),

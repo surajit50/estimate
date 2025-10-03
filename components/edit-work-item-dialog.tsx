@@ -18,7 +18,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Plus, Trash2 } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 
-interface SubItem {
+import type { WorkItemWithUnit, SubWorkItemType, UnitMasterType, RateLibraryType } from "@/lib/types"
+
+type EditableSubItem = {
   id?: string
   description: string
   nos: number
@@ -26,36 +28,14 @@ interface SubItem {
   breadth: number
   depth: number
   quantity: number
+  unitSymbol?: string
 }
 
-interface WorkItem {
-  id: string
-  pageRef: string | null
-  itemRef: string | null
-  description: string
-  unitId: string
-  rate: number
-  length: number
-  width: number
-  height: number
-  subItems?: SubItem[]
-}
-
-interface Unit {
-  id: string
-  unitName: string
-  unitSymbol: string
-}
-
-interface Rate {
-  id: string
-  description: string
-  unitId: string
-  standardRate: number
-}
+type Unit = UnitMasterType
+type Rate = RateLibraryType
 
 interface EditWorkItemDialogProps {
-  item: WorkItem | null
+  item: WorkItemWithUnit | null
   onOpenChange: (open: boolean) => void
   onEdit: (item: any) => void
   units: Unit[]
@@ -74,7 +54,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
     width: "",
     height: "",
   })
-  const [subItems, setSubItems] = useState<SubItem[]>([])
+  const [subItems, setSubItems] = useState<EditableSubItem[]>([])
   const [calculatedQuantity, setCalculatedQuantity] = useState(0)
   const [calculatedAmount, setCalculatedAmount] = useState(0)
 
@@ -82,7 +62,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
     if (item) {
       setFormData({
         pageRef: item.pageRef || "",
-        itemRef: item.itemRef || "",
+        itemRef: "",
         description: item.description,
         unitId: item.unitId,
         rate: item.rate.toString(),
@@ -116,14 +96,17 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
   }, [formData.length, formData.width, formData.height, formData.rate, subItems])
 
   const addSubItem = () => {
-    setSubItems([...subItems, { description: "", nos: 1, length: 1, breadth: 1, depth: 1, quantity: 1 }])
+    setSubItems([
+      ...subItems,
+      { description: "", nos: 1, length: 1, breadth: 1, depth: 1, quantity: 1, unitSymbol: "" },
+    ])
   }
 
   const removeSubItem = (index: number) => {
     setSubItems(subItems.filter((_, i) => i !== index))
   }
 
-  const updateSubItem = (index: number, field: keyof SubItem, value: string | number) => {
+  const updateSubItem = (index: number, field: keyof EditableSubItem, value: string | number) => {
     const updated = [...subItems]
     updated[index] = { ...updated[index], [field]: value }
 

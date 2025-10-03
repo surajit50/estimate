@@ -16,9 +16,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-export default async function ViewEstimatePage({ params }: { params: { id: string } }) {
+export default async function ViewEstimatePage(context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params
   const estimate = await prisma.estimate.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       workItems: {
         include: {
@@ -47,22 +48,22 @@ export default async function ViewEstimatePage({ params }: { params: { id: strin
             </Button>
           </Link>
           <div className="flex gap-2">
-            <Link href={`/estimates/${params.id}/edit`}>
+            <Link href={`/estimates/${id}/edit`}>
               <Button variant="outline">
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Details
               </Button>
             </Link>
-            <Link href={`/estimates/${params.id}/work-items`}>
+            <Link href={`/estimates/${id}/work-items`}>
               <Button variant="outline">Manage Work Items</Button>
             </Link>
-            <Link href={`/estimates/${params.id}/detailed`}>
+            <Link href={`/estimates/${id}/detailed`}>
               <Button variant="outline">
                 <FileText className="h-4 w-4 mr-2" />
                 Detailed View
               </Button>
             </Link>
-            <Link href={`/estimates/${params.id}/abstract`}>
+            <Link href={`/estimates/${id}/abstract`}>
               <Button>
                 <FileText className="h-4 w-4 mr-2" />
                 View Abstract
@@ -78,13 +79,13 @@ export default async function ViewEstimatePage({ params }: { params: { id: strin
                 <DropdownMenuLabel>Export Options</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href={`/api/estimates/${params.id}/export/pdf`} target="_blank" className="cursor-pointer">
+                  <Link href={`/api/estimates/${id}/export/pdf`} target="_blank" className="cursor-pointer">
                     <Download className="h-4 w-4 mr-2" />
                     Export as PDF
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href={`/api/estimates/${params.id}/export/excel`} target="_blank" className="cursor-pointer">
+                  <Link href={`/api/estimates/${id}/export/excel`} target="_blank" className="cursor-pointer">
                     <Download className="h-4 w-4 mr-2" />
                     Export as Excel
                   </Link>
@@ -124,7 +125,7 @@ export default async function ViewEstimatePage({ params }: { params: { id: strin
               {estimate.workItems.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground">No work items added yet.</p>
-                  <Link href={`/estimates/${params.id}/work-items`}>
+                  <Link href={`/estimates/${id}/work-items`}>
                     <Button className="mt-4">Add Work Items</Button>
                   </Link>
                 </div>

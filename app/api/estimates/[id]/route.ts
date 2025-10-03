@@ -1,10 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await context.params
     const estimate = await prisma.estimate.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         workItems: {
           include: {
@@ -26,23 +27,37 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const body = await request.json()
-    const { title, category, description, location, activityCode, cgst, sgst, lwCess, contingency } = body
+    const {
+      title,
+      category,
+      description,
+      location,
+      activityCode,
+      cgst,
+      sgst,
+      lwCess,
+      contingency,
+      cgstPercent,
+      sgstPercent,
+      cessPercent,
+    } = body
 
+    const { id } = await context.params
     const estimate = await prisma.estimate.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         title,
         category,
         description: description || null,
         location: location || null,
         activityCode: activityCode || null,
-        cgst: cgst || 0,
-        sgst: sgst || 0,
-        lwCess: lwCess || 0,
-        contingency: contingency || 0,
+        cgstPercent: (cgstPercent ?? cgst ?? 0),
+        sgstPercent: (sgstPercent ?? sgst ?? 0),
+        cessPercent: (cessPercent ?? lwCess ?? 0),
+        contingency: contingency ?? 0,
       },
     })
 
@@ -52,10 +67,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await context.params
     await prisma.estimate.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({ success: true })

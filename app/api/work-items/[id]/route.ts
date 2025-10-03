@@ -1,20 +1,20 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const body = await request.json()
     const { pageRef, itemRef, description, unitId, rate, length, width, height, quantity, amount, subItems } = body
+    const { id } = await context.params
 
-    await prisma.subItem.deleteMany({
-      where: { workItemId: params.id },
+    await prisma.subWorkItem.deleteMany({
+      where: { workItemId: id },
     })
 
     const workItem = await prisma.workItem.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         pageRef,
-        itemRef,
         description,
         unitId,
         rate,
@@ -48,10 +48,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await context.params
     await prisma.workItem.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({ success: true })

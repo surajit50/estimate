@@ -8,30 +8,24 @@ import { PlusCircle, Edit, Trash2 } from "lucide-react"
 import { AddUnitDialog } from "@/components/add-unit-dialog"
 import { EditUnitDialog } from "@/components/edit-unit-dialog"
 import { DeleteUnitDialog } from "@/components/delete-unit-dialog"
-
-interface Unit {
-  id: string
-  unitName: string
-  unitSymbol: string
-  createdAt: Date
-}
+import type { UnitMasterType } from "@/lib/types"
 
 interface UnitsTableProps {
-  units: Unit[]
+  units: UnitMasterType[]
 }
 
 export function UnitsTable({ units: initialUnits }: UnitsTableProps) {
-  const [units, setUnits] = useState(initialUnits)
+  const [units, setUnits] = useState<UnitMasterType[]>(initialUnits)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
-  const [editUnit, setEditUnit] = useState<Unit | null>(null)
+  const [editUnit, setEditUnit] = useState<UnitMasterType | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
-  const handleAdd = (newUnit: Unit) => {
+  const handleAdd = (newUnit: UnitMasterType) => {
     setUnits([...units, newUnit].sort((a, b) => a.unitName.localeCompare(b.unitName)))
     setAddDialogOpen(false)
   }
 
-  const handleEdit = (updatedUnit: Unit) => {
+  const handleEdit = (updatedUnit: UnitMasterType) => {
     setUnits(units.map((u) => (u.id === updatedUnit.id ? updatedUnit : u)))
     setEditUnit(null)
   }
