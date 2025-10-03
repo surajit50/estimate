@@ -20,6 +20,17 @@ import { Textarea } from "@/components/ui/textarea"
 
 import type { WorkItemWithUnit, SubWorkItemType, UnitMasterType, RateLibraryType } from "@/lib/types"
 
+type EditableSubItem = {
+  id?: string
+  description: string
+  nos: number
+  length: number
+  breadth: number
+  depth: number
+  quantity: number
+  unitSymbol?: string
+}
+
 type Unit = UnitMasterType
 type Rate = RateLibraryType
 
@@ -43,7 +54,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
     width: "",
     height: "",
   })
-  const [subItems, setSubItems] = useState<SubWorkItemType[]>([])
+  const [subItems, setSubItems] = useState<EditableSubItem[]>([])
   const [calculatedQuantity, setCalculatedQuantity] = useState(0)
   const [calculatedAmount, setCalculatedAmount] = useState(0)
 
@@ -85,14 +96,17 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
   }, [formData.length, formData.width, formData.height, formData.rate, subItems])
 
   const addSubItem = () => {
-    setSubItems([...subItems, { description: "", nos: 1, length: 1, breadth: 1, depth: 1, quantity: 1 }])
+    setSubItems([
+      ...subItems,
+      { description: "", nos: 1, length: 1, breadth: 1, depth: 1, quantity: 1, unitSymbol: "" },
+    ])
   }
 
   const removeSubItem = (index: number) => {
     setSubItems(subItems.filter((_, i) => i !== index))
   }
 
-  const updateSubItem = (index: number, field: keyof SubWorkItemType, value: string | number) => {
+  const updateSubItem = (index: number, field: keyof EditableSubItem, value: string | number) => {
     const updated = [...subItems]
     updated[index] = { ...updated[index], [field]: value }
 
