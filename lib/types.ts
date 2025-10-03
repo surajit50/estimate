@@ -1,0 +1,82 @@
+export const ESTIMATE_CATEGORIES = [
+  "Building",
+  "Road",
+  "Drain",
+  "Culvert",
+  "Electrical",
+  "Water Supply",
+  "Irrigation",
+  "Miscellaneous",
+] as const
+
+export type EstimateCategory = (typeof ESTIMATE_CATEGORIES)[number]
+
+export interface EstimateWithItems {
+  id: string
+  title: string
+  category: string
+  description: string | null
+  location: string | null
+  activityCode?: string | null
+  parameters?: any
+  cgstPercent?: number
+  sgstPercent?: number
+  cessPercent?: number
+  contingency?: number
+  createdAt: Date
+  updatedAt: Date
+  workItems: WorkItemWithUnit[]
+}
+
+export interface WorkItemWithUnit {
+  id: string
+  itemNo: number
+  pageRef?: string | null
+  description: string
+  unitId: string
+  unit: {
+    id: string
+    unitName: string
+    unitSymbol: string
+  }
+  rate: number
+  length: number
+  width: number
+  height: number
+  quantity: number
+  amount: number
+  subItems?: SubWorkItemType[]
+}
+
+export interface SubWorkItemType {
+  id: string
+  description: string
+  nos: number
+  length: number
+  breadth: number
+  depth: number
+  quantity: number
+  unitSymbol: string
+}
+
+export interface UnitMasterType {
+  id: string
+  unitName: string
+  unitSymbol: string
+  createdAt: Date
+}
+
+export interface RateLibraryType {
+  id: string
+  description: string
+  unitId: string
+  unit: {
+    id: string
+    unitName: string
+    unitSymbol: string
+  }
+  standardRate: number
+  year: string | null
+  createdAt: Date
+  updatedAt: Date
+}

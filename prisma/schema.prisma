@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Estimate {
+  id            String     @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  category      String
+  description   String?
+  location      String?
+  activityCode  String?
+  parameters    Json?      // Store project-specific parameters like dimensions, slopes, etc.
+  cgstPercent   Float      @default(9.0)
+  sgstPercent   Float      @default(9.0)
+  cessPercent   Float      @default(1.0)
+  contingency   Float      @default(0.0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  workItems     WorkItem[]
+}
+
+model WorkItem {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  estimateId  String        @db.ObjectId
+  estimate    Estimate      @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  itemNo      Int
+  pageRef     String?       // e.g., "1/2 a", "332/18.07"
+  description String
+  unitId      String        @db.ObjectId
+  unit        UnitMaster    @relation(fields: [unitId], references: [id])
+  rate        Float
+  length      Float         @default(0)
+  width       Float         @default(0)
+  height      Float         @default(0)
+  quantity    Float
+  amount      Float
+  subItems    SubWorkItem[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([estimateId])
+}
+
+model SubWorkItem {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workItemId  String   @db.ObjectId
+  workItem    WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  description String   // e.g., "In Foundation", "For Slabs of Size- 1.00mX0.80mX0.075m(th.)"
+  nos         Float    @default(1)
+  length      Float    @default(1)
+  breadth     Float    @default(1)
+  depth       Float    @default(1)
+  quantity    Float    // Calculated: nos × length × breadth × depth
+  unitSymbol  String   // Display unit like "M³", "M²"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workItemId])
+}
+
+model UnitMaster {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  unitName    String     @unique
+  unitSymbol  String
+  createdAt   DateTime   @default(now())
+  workItems   WorkItem[]
+  rateLibrary RateLibrary[]
+}
+
+model RateLibrary {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  description  String
+  unitId       String     @db.ObjectId
+  unit         UnitMaster @relation(fields: [unitId], references: [id])
+  standardRate Float
+  year         String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([unitId])
+}
