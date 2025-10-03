@@ -1,32 +1,59 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, DollarSign, Ruler } from "lucide-react"
+import { PlusCircle, DollarSign, Ruler, Sun, Moon } from "lucide-react"
+import { useTheme } from "next-themes"
+import { useEffect, useState } from "react"
 
 export function DashboardHeader() {
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return null
+  }
+
   return (
-    <header className="border-b border-border bg-card">
-      <div className="container mx-auto px-4 py-6">
+    <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+      <div className="container mx-auto px-6 py-8">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Estimate Preparation System</h1>
-            <p className="text-muted-foreground mt-1">Manage construction estimates and work items</p>
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold gradient-text">
+              Estimate Preparation System
+            </h1>
+            <p className="text-muted-foreground text-lg">Manage construction estimates and work items with precision</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-4">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="group"
+            >
+              {theme === "dark" ? (
+                <Sun className="h-4 w-4 group-hover:rotate-180 transition-transform duration-500" />
+              ) : (
+                <Moon className="h-4 w-4 group-hover:rotate-12 transition-transform duration-200" />
+              )}
+            </Button>
             <Link href="/admin/units">
-              <Button variant="outline" size="sm">
-                <Ruler className="h-4 w-4 mr-2" />
+              <Button variant="outline" size="default" className="group">
+                <Ruler className="h-4 w-4 mr-2 group-hover:rotate-12 transition-transform duration-200" />
                 Unit Master
               </Button>
             </Link>
             <Link href="/admin/rates">
-              <Button variant="outline" size="sm">
-                <DollarSign className="h-4 w-4 mr-2" />
+              <Button variant="outline" size="default" className="group">
+                <DollarSign className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
                 Rate Library
               </Button>
             </Link>
             <Link href="/estimates/new">
-              <Button size="sm">
-                <PlusCircle className="h-4 w-4 mr-2" />
+              <Button size="default" className="group">
+                <PlusCircle className="h-4 w-4 mr-2 group-hover:rotate-90 transition-transform duration-200" />
                 New Estimate
               </Button>
             </Link>

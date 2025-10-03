@@ -11,10 +11,20 @@ export default async function DashboardPage() {
   })
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <DashboardHeader />
-      <main className="container mx-auto px-4 py-8">
-        <EstimatesTable estimates={estimates} />
+      <main className="container mx-auto px-6 py-12">
+        <div className="space-y-8">
+          <div className="text-center space-y-4 animate-fade-in-up">
+            <h2 className="text-2xl font-semibold text-foreground">Your Estimates</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Create, manage, and track your construction estimates with our comprehensive system
+            </p>
+          </div>
+          <div className="animate-fade-in">
+            <EstimatesTable estimates={estimates} />
+          </div>
+        </div>
       </main>
     </div>
   )

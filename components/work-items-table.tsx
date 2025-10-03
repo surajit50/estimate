@@ -107,22 +107,34 @@ export function WorkItemsTable({
 
   return (
     <>
-      <Card>
-        <CardHeader>
+      <Card className="shadow-lg border-border/50">
+        <CardHeader className="pb-6">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xl">Work Items</CardTitle>
-            <Button onClick={() => setAddDialogOpen(true)}>
-              <PlusCircle className="h-4 w-4 mr-2" />
+            <div>
+              <CardTitle className="text-2xl font-bold">Work Items</CardTitle>
+              <p className="text-muted-foreground text-sm mt-1">
+                {workItems.length} item{workItems.length !== 1 ? 's' : ''} in this estimate
+              </p>
+            </div>
+            <Button onClick={() => setAddDialogOpen(true)} size="default" className="group">
+              <PlusCircle className="h-4 w-4 mr-2 group-hover:rotate-90 transition-transform duration-200" />
               Add Work Item
             </Button>
           </div>
         </CardHeader>
         <CardContent>
           {workItems.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">No work items added yet. Add your first work item to get started.</p>
-              <Button className="mt-4" onClick={() => setAddDialogOpen(true)}>
-                Add Work Item
+            <div className="text-center py-16">
+              <div className="mx-auto w-20 h-20 bg-muted/50 rounded-full flex items-center justify-center mb-6">
+                <PlusCircle className="h-10 w-10 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">No work items yet</h3>
+              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                Start building your estimate by adding work items. Each item represents a specific construction task or material.
+              </p>
+              <Button onClick={() => setAddDialogOpen(true)} size="lg" className="group">
+                <PlusCircle className="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-200" />
+                Add Your First Work Item
               </Button>
             </div>
           ) : (

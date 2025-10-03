@@ -1,6 +1,18 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 
+// CORS headers for API routes
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+}
+
+// Handle preflight requests
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 200, headers: corsHeaders })
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -8,6 +20,7 @@ export async function POST(request: NextRequest) {
       estimateId,
       itemNo,
       pageRef,
+      itemRef,
       description,
       unitId,
       rate,
@@ -18,6 +31,21 @@ export async function POST(request: NextRequest) {
       amount,
       subItems,
     } = body
+
+    // Validation
+    if (!estimateId || !description || !unitId || !rate || !quantity) {
+      return NextResponse.json(
+        { error: "Missing required fields: estimateId, description, unitId, rate, quantity" },
+        { status: 400, headers: corsHeaders }
+      )
+    }
+
+    if (rate < 0 || quantity < 0) {
+      return NextResponse.json(
+        { error: "Rate and quantity must be positive numbers" },
+        { status: 400, headers: corsHeaders }
+      )
+    }
 
     console.log("[v0] Creating work item with data:", {
       estimateId,
@@ -31,26 +59,27 @@ export async function POST(request: NextRequest) {
       data: {
         estimateId,
         itemNo,
-        pageRef,
-        description,
+        pageRef: pageRef?.trim() || null,
+        itemRef: itemRef?.trim() || null,
+        description: description.trim(),
         unitId,
-        rate,
-        length,
-        width,
-        height,
-        quantity,
-        amount,
+        rate: parseFloat(rate),
+        length: parseFloat(length) || 0,
+        width: parseFloat(width) || 0,
+        height: parseFloat(height) || 0,
+        quantity: parseFloat(quantity),
+        amount: parseFloat(amount) || 0,
         subItems:
           subItems && subItems.length > 0
             ? {
                 create: subItems.map((subItem: any) => ({
-                  description: subItem.description,
-                  nos: subItem.nos,
-                  length: subItem.length,
-                  breadth: subItem.breadth,
-                  depth: subItem.depth,
-                  quantity: subItem.quantity,
-                  unitSymbol: subItem.unitSymbol,
+                  description: subItem.description?.trim() || "",
+                  nos: parseInt(subItem.nos) || 1,
+                  length: parseFloat(subItem.length) || 0,
+                  breadth: parseFloat(subItem.breadth) || 0,
+                  depth: parseFloat(subItem.depth) || 0,
+                  quantity: parseFloat(subItem.quantity) || 0,
+                  unitSymbol: subItem.unitSymbol?.trim() || "",
                 })),
               }
             : undefined,
@@ -87,15 +116,24 @@ export async function POST(request: NextRequest) {
       console.error("[v0] Failed to update rate library:", rateLibError)
     }
 
-    return NextResponse.json(workItem)
+    return NextResponse.json(workItem, { status: 201, headers: corsHeaders })
   } catch (error) {
     console.error("[v0] Error creating work item:", error)
+    
+    // Handle Prisma errors
+    if (error instanceof Error && error.message.includes("Foreign key constraint")) {
+      return NextResponse.json(
+        { error: "Invalid estimate or unit reference" },
+        { status: 400, headers: corsHeaders }
+      )
+    }
+
     return NextResponse.json(
       {
         error: "Failed to create work item",
-        details: error instanceof Error ? error.message : "Unknown error",
+        details: process.env.NODE_ENV === "development" ? error instanceof Error ? error.message : "Unknown error" : undefined,
       },
-      { status: 500 },
+      { status: 500, headers: corsHeaders },
     )
   }
 }

@@ -75,9 +75,14 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
   }
 
   return (
-    <Card className="max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="text-2xl">{estimate ? "Edit Estimate" : "Create New Estimate"}</CardTitle>
+    <Card className="max-w-3xl mx-auto shadow-lg border-border/50">
+      <CardHeader className="text-center pb-8">
+        <CardTitle className="text-3xl font-bold">
+          {estimate ? "Edit Estimate" : "Create New Estimate"}
+        </CardTitle>
+        <p className="text-muted-foreground mt-2">
+          {estimate ? "Update your estimate details" : "Fill in the details to create a new construction estimate"}
+        </p>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -145,8 +150,9 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
             />
           </div>
 
-          <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-            <h3 className="font-semibold text-sm">Tax & Additional Charges</h3>
+          <div className="space-y-4 p-6 bg-gradient-to-r from-muted/30 to-muted/50 rounded-xl border border-border/50">
+            <h3 className="font-semibold text-lg text-foreground">Tax & Additional Charges</h3>
+            <p className="text-sm text-muted-foreground">Configure tax rates and additional charges for your estimate</p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="cgstPercent">CGST (%)</Label>
@@ -195,12 +201,12 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
             </div>
           </div>
 
-          <div className="flex gap-3">
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          <div className="flex gap-4 pt-6">
+            <Button type="submit" disabled={loading} size="lg" className="flex-1 group">
+              {loading && <Loader2 className="h-5 w-5 mr-2 animate-spin" />}
               {estimate ? "Update Estimate" : "Create Estimate"}
             </Button>
-            <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>
+            <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading} size="lg">
               Cancel
             </Button>
           </div>

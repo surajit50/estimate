@@ -1,7 +1,24 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
-import * as XLSX from "xlsx"
 import { format } from "date-fns"
+
+// Dynamic import for XLSX to avoid build issues
+const getXLSX = async () => {
+  const XLSX = await import("xlsx")
+  return XLSX
+}
+
+// Handle preflight requests
+export async function OPTIONS() {
+  return new NextResponse(null, { 
+    status: 200, 
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    }
+  })
+}
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -20,6 +37,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
     if (!estimate) {
       return NextResponse.json({ error: "Estimate not found" }, { status: 404 })
     }
+
+    // Dynamic import XLSX
+    const XLSX = await getXLSX()
 
     // Create workbook
     const workbook = XLSX.utils.book_new()
@@ -121,6 +141,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": `attachment; filename="estimate-${estimate.title.replace(/[^a-z0-9]/gi, "-")}.xlsx"`,
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
       },
     })
   } catch (error) {

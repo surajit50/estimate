@@ -44,17 +44,28 @@ export function EstimatesTable({ estimates: initialEstimates }: EstimatesTablePr
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">All Estimates</CardTitle>
+      <Card className="shadow-lg border-border/50">
+        <CardHeader className="pb-6">
+          <CardTitle className="text-3xl font-bold">All Estimates</CardTitle>
+          <p className="text-muted-foreground text-sm">
+            {estimates.length} estimate{estimates.length !== 1 ? 's' : ''} found
+          </p>
         </CardHeader>
         <CardContent>
           {estimates.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No estimates found. Create your first estimate to get started.</p>
+            <div className="text-center py-16">
+              <div className="mx-auto w-24 h-24 bg-muted/50 rounded-full flex items-center justify-center mb-6">
+                <FileText className="h-12 w-12 text-muted-foreground" />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-2">No estimates yet</h3>
+              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                Get started by creating your first construction estimate. Track costs, manage work items, and generate professional reports.
+              </p>
               <Link href="/estimates/new">
-                <Button className="mt-4">Create Estimate</Button>
+                <Button size="lg" className="group">
+                  <PlusCircle className="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-200" />
+                  Create Your First Estimate
+                </Button>
               </Link>
             </div>
           ) : (
@@ -72,36 +83,53 @@ export function EstimatesTable({ estimates: initialEstimates }: EstimatesTablePr
               </TableHeader>
               <TableBody>
                 {estimates.map((estimate) => (
-                  <TableRow key={estimate.id}>
-                    <TableCell className="font-medium">{estimate.title}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{estimate.category}</Badge>
+                  <TableRow key={estimate.id} className="group hover:bg-muted/30">
+                    <TableCell className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                      {estimate.title}
                     </TableCell>
-                    <TableCell>{estimate.location || "-"}</TableCell>
-                    <TableCell>{estimate.workItems.length}</TableCell>
                     <TableCell>
+                      <Badge variant="secondary" className="font-medium">
+                        {estimate.category}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {estimate.location || <span className="italic">Not specified</span>}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className="inline-flex items-center justify-center w-8 h-8 bg-primary/10 text-primary font-semibold rounded-full text-sm">
+                        {estimate.workItems.length}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-semibold text-foreground">
                       ₹{calculateTotal(estimate.workItems).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </TableCell>
-                    <TableCell>{format(new Date(estimate.createdAt), "dd MMM yyyy")}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {format(new Date(estimate.createdAt), "dd MMM yyyy")}
+                    </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-1">
                         <Link href={`/estimates/${estimate.id}`}>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
                             <Eye className="h-4 w-4" />
                           </Button>
                         </Link>
                         <Link href={`/estimates/${estimate.id}/edit`}>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
                             <Edit className="h-4 w-4" />
                           </Button>
                         </Link>
                         <Link href={`/estimates/${estimate.id}/abstract`}>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
                             <FileText className="h-4 w-4" />
                           </Button>
                         </Link>
-                        <Button variant="ghost" size="sm" onClick={() => setDeleteId(estimate.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setDeleteId(estimate.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
