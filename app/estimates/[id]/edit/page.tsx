@@ -5,13 +5,10 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { notFound } from "next/navigation"
 
-export default async function EditEstimatePage({
-  params,
-}: {
-  params: { id: string }
-}) {
+export default async function EditEstimatePage(context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params
   const estimate = await prisma.estimate.findUnique({
-    where: { id: params.id },
+    where: { id },
   })
 
   if (!estimate) {
