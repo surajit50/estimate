@@ -15,7 +15,6 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       where: { id },
       data: {
         pageRef,
-        itemRef,
         description,
         unitId,
         rate,
