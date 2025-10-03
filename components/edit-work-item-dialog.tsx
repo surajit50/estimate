@@ -51,7 +51,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
     if (item) {
       setFormData({
         pageRef: item.pageRef || "",
-        itemRef: item.itemRef || "",
+        itemRef: "",
         description: item.description,
         unitId: item.unitId,
         rate: item.rate.toString(),
