@@ -4,80 +4,22 @@ import { useState } from "react"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { WorkItemsTable } from "@/components/work-items-table"
-
-interface SubItem {
-  id: string
-  description: string
-  nos: number
-  length: number
-  breadth: number
-  depth: number
-  quantity: number
-}
-
-interface WorkItem {
-  id: string
-  itemNo: number
-  pageRef: string | null
-  itemRef: string | null
-  description: string
-  unitId: string
-  unit: {
-    id: string
-    unitName: string
-    unitSymbol: string
-  }
-  rate: number
-  length: number
-  width: number
-  height: number
-  quantity: number
-  amount: number
-  subItems?: SubItem[]
-}
-
-interface Estimate {
-  id: string
-  title: string
-  category: string
-  description: string | null
-  location: string | null
-  workItems: WorkItem[]
-}
-
-interface Unit {
-  id: string
-  unitName: string
-  unitSymbol: string
-}
-
-interface Rate {
-  id: string
-  description: string
-  unitId: string
-  unit: {
-    id: string
-    unitName: string
-    unitSymbol: string
-  }
-  standardRate: number
-  year: string | null
-}
+import type { EstimateWithItems, UnitMasterType, RateLibraryType, WorkItemWithUnit } from "@/lib/types"
 
 interface WorkItemsManagerProps {
-  estimate: Estimate
-  units: Unit[]
-  rates: Rate[]
+  estimate: EstimateWithItems
+  units: UnitMasterType[]
+  rates: RateLibraryType[]
 }
 
 export function WorkItemsManager({ estimate, units, rates }: WorkItemsManagerProps) {
-  const [workItems, setWorkItems] = useState(estimate.workItems)
+  const [workItems, setWorkItems] = useState<WorkItemWithUnit[]>(estimate.workItems)
 
-  const handleAdd = (newItem: WorkItem) => {
+  const handleAdd = (newItem: WorkItemWithUnit) => {
     setWorkItems([...workItems, newItem])
   }
 
-  const handleUpdate = (updatedItem: WorkItem) => {
+  const handleUpdate = (updatedItem: WorkItemWithUnit) => {
     setWorkItems(workItems.map((item) => (item.id === updatedItem.id ? updatedItem : item)))
   }
 

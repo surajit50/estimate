@@ -18,44 +18,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Plus, Trash2 } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 
-interface SubItem {
-  id?: string
-  description: string
-  nos: number
-  length: number
-  breadth: number
-  depth: number
-  quantity: number
-}
+import type { WorkItemWithUnit, SubWorkItemType, UnitMasterType, RateLibraryType } from "@/lib/types"
 
-interface WorkItem {
-  id: string
-  pageRef: string | null
-  itemRef: string | null
-  description: string
-  unitId: string
-  rate: number
-  length: number
-  width: number
-  height: number
-  subItems?: SubItem[]
-}
-
-interface Unit {
-  id: string
-  unitName: string
-  unitSymbol: string
-}
-
-interface Rate {
-  id: string
-  description: string
-  unitId: string
-  standardRate: number
-}
+type Unit = UnitMasterType
+type Rate = RateLibraryType
 
 interface EditWorkItemDialogProps {
-  item: WorkItem | null
+  item: WorkItemWithUnit | null
   onOpenChange: (open: boolean) => void
   onEdit: (item: any) => void
   units: Unit[]
@@ -74,7 +43,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
     width: "",
     height: "",
   })
-  const [subItems, setSubItems] = useState<SubItem[]>([])
+  const [subItems, setSubItems] = useState<SubWorkItemType[]>([])
   const [calculatedQuantity, setCalculatedQuantity] = useState(0)
   const [calculatedAmount, setCalculatedAmount] = useState(0)
 
@@ -123,7 +92,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
     setSubItems(subItems.filter((_, i) => i !== index))
   }
 
-  const updateSubItem = (index: number, field: keyof SubItem, value: string | number) => {
+  const updateSubItem = (index: number, field: keyof SubWorkItemType, value: string | number) => {
     const updated = [...subItems]
     updated[index] = { ...updated[index], [field]: value }
 

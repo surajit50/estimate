@@ -10,63 +10,15 @@ import { EditWorkItemDialog } from "@/components/edit-work-item-dialog"
 import { DeleteWorkItemDialog } from "@/components/delete-work-item-dialog"
 import { Badge } from "@/components/ui/badge"
 
-interface SubItem {
-  id: string
-  description: string
-  nos: number
-  length: number
-  breadth: number
-  depth: number
-  quantity: number
-}
-
-interface WorkItem {
-  id: string
-  itemNo: number
-  pageRef: string | null
-  itemRef: string | null
-  description: string
-  unitId: string
-  unit: {
-    id: string
-    unitName: string
-    unitSymbol: string
-  }
-  rate: number
-  length: number
-  width: number
-  height: number
-  quantity: number
-  amount: number
-  subItems?: SubItem[]
-}
-
-interface Unit {
-  id: string
-  unitName: string
-  unitSymbol: string
-}
-
-interface Rate {
-  id: string
-  description: string
-  unitId: string
-  unit: {
-    id: string
-    unitName: string
-    unitSymbol: string
-  }
-  standardRate: number
-  year: string | null
-}
+import type { WorkItemWithUnit, UnitMasterType, RateLibraryType, SubWorkItemType } from "@/lib/types"
 
 interface WorkItemsTableProps {
   estimateId: string
-  workItems: WorkItem[]
-  units: Unit[]
-  rates: Rate[]
-  onAdd: (item: WorkItem) => void
-  onUpdate: (item: WorkItem) => void
+  workItems: WorkItemWithUnit[]
+  units: UnitMasterType[]
+  rates: RateLibraryType[]
+  onAdd: (item: WorkItemWithUnit) => void
+  onUpdate: (item: WorkItemWithUnit) => void
   onDelete: (id: string) => void
 }
 
@@ -80,7 +32,7 @@ export function WorkItemsTable({
   onDelete,
 }: WorkItemsTableProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
-  const [editItem, setEditItem] = useState<WorkItem | null>(null)
+  const [editItem, setEditItem] = useState<WorkItemWithUnit | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
 
