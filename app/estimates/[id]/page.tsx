@@ -125,7 +125,7 @@ export default async function ViewEstimatePage(context: { params: Promise<{ id: 
               {estimate.workItems.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground">No work items added yet.</p>
-                  <Link href={`/estimates/${params.id}/work-items`}>
+                  <Link href={`/estimates/${id}/work-items`}>
                     <Button className="mt-4">Add Work Items</Button>
                   </Link>
                 </div>
