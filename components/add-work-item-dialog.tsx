@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import * as React from "react"
 
 import {
   Command,
@@ -9,7 +9,6 @@ import {
   CommandInput,
   CommandItem,
 } from "@/components/ui/command"
-import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -20,10 +19,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, Plus, Trash2 } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
+import { useForm, useFieldArray } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { workItemSchema, type WorkItemFormValues } from "@/lib/schemas"
 
 interface Unit {
   id: string
@@ -69,107 +71,90 @@ export function AddWorkItemDialog({
   rates,
   nextItemNo,
 }: AddWorkItemDialogProps) {
-  const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    pageRef: "",
-    description: "",
-    unitId: "",
-    rate: "",
-    length: "1",
-    width: "1",
-    height: "1",
+  const form = useForm<WorkItemFormValues>({
+    resolver: zodResolver(workItemSchema),
+    defaultValues: {
+      pageRef: "",
+      description: "",
+      unitId: "",
+      rate: 0,
+      length: 1,
+      width: 1,
+      height: 1,
+      subItems: [],
+    },
   })
-  const [subItems, setSubItems] = useState<SubItem[]>([])
-  const [calculatedQuantity, setCalculatedQuantity] = useState(1)
-  const [calculatedAmount, setCalculatedAmount] = useState(0)
 
-  // Calculate quantity and amount whenever dimensions or rate change
-  useEffect(() => {
-    let quantity = 0
+  const { fields, append, remove } = useFieldArray({ control: form.control, name: "subItems" })
 
-    if (subItems.length > 0) {
-      // Calculate from sub-items
-      quantity = subItems.reduce((sum, item) => {
-        const nos = Number.parseFloat(item.nos) || 0
-        const length = Number.parseFloat(item.length) || 0
-        const breadth = Number.parseFloat(item.breadth) || 0
-        const depth = Number.parseFloat(item.depth) || 0
+  React.useEffect(() => {
+    if (!open) {
+      form.reset({ pageRef: "", description: "", unitId: "", rate: 0, length: 1, width: 1, height: 1, subItems: [] })
+    }
+  }, [open])
+
+  const watch = form.watch
+  const watchedLength = watch("length")
+  const watchedWidth = watch("width")
+  const watchedHeight = watch("height")
+  const watchedRate = watch("rate")
+  const watchedSubItems = watch("subItems")
+
+  const calculatedQuantity = React.useMemo(() => {
+    if (watchedSubItems && watchedSubItems.length > 0) {
+      return watchedSubItems.reduce((sum: number, item: any) => {
+        const nos = Number(item.nos) || 0
+        const length = Number(item.length) || 0
+        const breadth = Number(item.breadth) || 0
+        const depth = Number(item.depth) || 0
         return sum + nos * length * breadth * depth
       }, 0)
-    } else {
-      // Calculate from main dimensions
-      const length = Number.parseFloat(formData.length) || 0
-      const width = Number.parseFloat(formData.width) || 0
-      const height = Number.parseFloat(formData.height) || 0
-      quantity = length * width * height
     }
+    const l = Number(watchedLength) || 0
+    const w = Number(watchedWidth) || 0
+    const h = Number(watchedHeight) || 0
+    return l * w * h
+  }, [watchedSubItems, watchedLength, watchedWidth, watchedHeight])
 
-    const rate = Number.parseFloat(formData.rate) || 0
-    const amount = quantity * rate
-
-    setCalculatedQuantity(quantity)
-    setCalculatedAmount(amount)
-  }, [formData.length, formData.width, formData.height, formData.rate, subItems])
+  const calculatedAmount = React.useMemo(() => {
+    const r = Number(watchedRate) || 0
+    return calculatedQuantity * r
+  }, [watchedRate, calculatedQuantity])
 
   const handleRateSelect = (rateId: string) => {
     const selectedRate = rates.find((r) => r.id === rateId)
     if (selectedRate) {
-      setFormData({
-        ...formData,
-        description: selectedRate.description,
-        unitId: selectedRate.unitId,
-        rate: selectedRate.standardRate.toString(),
-      })
+      form.setValue("description", selectedRate.description)
+      form.setValue("unitId", selectedRate.unitId)
+      form.setValue("rate", Number(selectedRate.standardRate))
     }
   }
 
-  const addSubItem = () => {
-    setSubItems([...subItems, { description: "", nos: "1", length: "1", breadth: "1", depth: "1" }])
-  }
-
-  const removeSubItem = (index: number) => {
-    setSubItems(subItems.filter((_, i) => i !== index))
-  }
-
-  const updateSubItem = (index: number, field: keyof SubItem, value: string) => {
-    const updated = [...subItems]
-    updated[index][field] = value
-    setSubItems(updated)
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-
+  const onSubmit = async (values: WorkItemFormValues) => {
     try {
-      const selectedUnit = units.find((u) => u.id === formData.unitId)
-
+      const selectedUnit = units.find((u) => u.id === values.unitId)
       const response = await fetch("/api/work-items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           estimateId,
           itemNo: nextItemNo,
-          pageRef: formData.pageRef || null,
-          description: formData.description,
-          unitId: formData.unitId,
-          rate: Number.parseFloat(formData.rate),
-          length: Number.parseFloat(formData.length),
-          width: Number.parseFloat(formData.width),
-          height: Number.parseFloat(formData.height),
+          pageRef: values.pageRef || null,
+          description: values.description,
+          unitId: values.unitId,
+          rate: values.rate,
+          length: values.length,
+          width: values.width,
+          height: values.height,
           quantity: calculatedQuantity,
           amount: calculatedAmount,
-          subItems: subItems.map((item) => ({
+          subItems: (values.subItems || []).map((item) => ({
             description: item.description,
-            nos: Number.parseFloat(item.nos),
-            length: Number.parseFloat(item.length),
-            breadth: Number.parseFloat(item.breadth),
-            depth: Number.parseFloat(item.depth),
-            quantity:
-              Number.parseFloat(item.nos) *
-              Number.parseFloat(item.length) *
-              Number.parseFloat(item.breadth) *
-              Number.parseFloat(item.depth),
+            nos: item.nos,
+            length: item.length,
+            breadth: item.breadth,
+            depth: item.depth,
+            quantity: item.nos * item.length * item.breadth * item.depth,
             unitSymbol: selectedUnit?.unitSymbol || "",
           })),
         }),
@@ -178,22 +163,11 @@ export function AddWorkItemDialog({
       if (response.ok) {
         const newItem = await response.json()
         onAdd(newItem)
-        setFormData({
-          pageRef: "",
-          description: "",
-          unitId: "",
-          rate: "",
-          length: "1",
-          width: "1",
-          height: "1",
-        })
-        setSubItems([])
+        form.reset({ pageRef: "", description: "", unitId: "", rate: 0, length: 1, width: 1, height: 1, subItems: [] })
         onOpenChange(false)
       }
     } catch (error) {
       console.error("Error adding work item:", error)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -208,7 +182,8 @@ export function AddWorkItemDialog({
       </DialogDescription>
     </DialogHeader>
 
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <Form {...form}>
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
       {/* Rate Library */}
       <section className="bg-gray-50 border rounded-lg p-4 shadow-sm">
         <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
@@ -237,110 +212,146 @@ export function AddWorkItemDialog({
       <section className="bg-white border rounded-lg p-6 shadow-sm">
         <h3 className="text-lg font-semibold mb-4">📝 Basic Details</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <Label htmlFor="pageRef">Page & Item Reference</Label>
-            <Input
-              id="pageRef"
-              value={formData.pageRef}
-              onChange={(e) => setFormData({ ...formData, pageRef: e.target.value })}
-              placeholder="e.g., 1/2 a, 332/18.07"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="unitId">Unit *</Label>
-            <Select
-              value={formData.unitId}
-              onValueChange={(value) => setFormData({ ...formData, unitId: value })}
-              required
-            >
-              <SelectTrigger id="unitId">
-                <SelectValue placeholder="Select unit" />
-              </SelectTrigger>
-              <SelectContent>
-                {units.map((unit) => (
-                  <SelectItem key={unit.id} value={unit.id}>
-                    {unit.unitName} ({unit.unitSymbol})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div className="mt-4 space-y-2">
-          <Label htmlFor="description">Item Description *</Label>
-          <Textarea
-            id="description"
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            placeholder="Enter detailed work item description"
-            required
-            rows={3}
-            className="resize-none"
+          <FormField
+            control={form.control}
+            name="pageRef"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Page & Item Reference</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., 1/2 a, 332/18.07" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="unitId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Unit *</FormLabel>
+                <FormControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select unit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {units.map((unit) => (
+                        <SelectItem key={unit.id} value={unit.id}>
+                          {unit.unitName} ({unit.unitSymbol})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
         </div>
 
-        <div className="mt-4 space-y-2">
-          <Label htmlFor="rate">Rate (₹) *</Label>
-          <Input
-            id="rate"
-            type="number"
-            step="0.01"
-            value={formData.rate}
-            onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
-            placeholder="Enter rate"
-            required
-          />
-        </div>
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem className="mt-4">
+              <FormLabel>Item Description *</FormLabel>
+              <FormControl>
+                <Textarea rows={3} className="resize-none" placeholder="Enter detailed work item description" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="rate"
+          render={({ field }) => (
+            <FormItem className="mt-4">
+              <FormLabel>Rate (₹) *</FormLabel>
+              <FormControl>
+                <Input type="number" step="0.01" placeholder="Enter rate" value={field.value ?? ""} onChange={field.onChange} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </section>
 
       {/* Sub-items */}
       <section className="bg-gray-50 border rounded-lg p-6 shadow-sm">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold">📦 Sub-Items Breakdown</h3>
-          <Button type="button" variant="outline" onClick={addSubItem}>
+          <Button type="button" variant="outline" onClick={() => append({ description: "", nos: 1, length: 1, breadth: 1, depth: 1 })}>
             <Plus className="h-4 w-4 mr-2" />
             Add Sub-Item
           </Button>
         </div>
 
-        {subItems.length > 0 ? (
+        {fields.length > 0 ? (
           <div className="space-y-4">
-            {subItems.map((item, index) => (
+            {fields.map((item, index) => (
               <div key={index} className="p-4 bg-white rounded-lg border shadow-sm space-y-4">
                 <div className="flex items-start gap-2">
-                  <Input
-                    placeholder="Sub-item description"
-                    value={item.description}
-                    onChange={(e) => updateSubItem(index, "description", e.target.value)}
-                    className="flex-1"
+                  <FormField
+                    control={form.control}
+                    name={`subItems.${index}.description` as const}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormControl>
+                          <Input placeholder="Sub-item description" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => removeSubItem(index)}
+                    onClick={() => remove(index)}
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
                 <div className="grid grid-cols-4 gap-3">
-                  <Input type="number" step="0.01" placeholder="Nos" value={item.nos}
-                    onChange={(e) => updateSubItem(index, "nos", e.target.value)} />
-                  <Input type="number" step="0.01" placeholder="Length" value={item.length}
-                    onChange={(e) => updateSubItem(index, "length", e.target.value)} />
-                  <Input type="number" step="0.01" placeholder="Breadth" value={item.breadth}
-                    onChange={(e) => updateSubItem(index, "breadth", e.target.value)} />
-                  <Input type="number" step="0.01" placeholder="Depth" value={item.depth}
-                    onChange={(e) => updateSubItem(index, "depth", e.target.value)} />
+                  <FormField control={form.control} name={`subItems.${index}.nos` as const} render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input type="number" step="0.01" placeholder="Nos" value={field.value ?? ""} onChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name={`subItems.${index}.length` as const} render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input type="number" step="0.01" placeholder="Length" value={field.value ?? ""} onChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name={`subItems.${index}.breadth` as const} render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input type="number" step="0.01" placeholder="Breadth" value={field.value ?? ""} onChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name={`subItems.${index}.depth` as const} render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input type="number" step="0.01" placeholder="Depth" value={field.value ?? ""} onChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )} />
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Qty:{" "}
                   {(
-                    Number.parseFloat(item.nos) *
-                    Number.parseFloat(item.length) *
-                    Number.parseFloat(item.breadth) *
-                    Number.parseFloat(item.depth)
+                    (Number(item.nos) || 0) *
+                    (Number((item as any).length) || 0) *
+                    (Number((item as any).breadth) || 0) *
+                    (Number((item as any).depth) || 0)
                   ).toFixed(3)}
                 </p>
               </div>
@@ -348,39 +359,33 @@ export function AddWorkItemDialog({
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="length">Length *</Label>
-              <Input
-                id="length"
-                type="number"
-                step="0.01"
-                value={formData.length}
-                onChange={(e) => setFormData({ ...formData, length: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="width">Width *</Label>
-              <Input
-                id="width"
-                type="number"
-                step="0.01"
-                value={formData.width}
-                onChange={(e) => setFormData({ ...formData, width: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="height">Height/Depth *</Label>
-              <Input
-                id="height"
-                type="number"
-                step="0.01"
-                value={formData.height}
-                onChange={(e) => setFormData({ ...formData, height: e.target.value })}
-                required
-              />
-            </div>
+            <FormField control={form.control} name="length" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Length *</FormLabel>
+                <FormControl>
+                  <Input type="number" step="0.01" value={field.value ?? ""} onChange={field.onChange} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="width" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Width *</FormLabel>
+                <FormControl>
+                  <Input type="number" step="0.01" value={field.value ?? ""} onChange={field.onChange} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="height" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Height/Depth *</FormLabel>
+                <FormControl>
+                  <Input type="number" step="0.01" value={field.value ?? ""} onChange={field.onChange} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
           </div>
         )}
 
@@ -403,15 +408,16 @@ export function AddWorkItemDialog({
 
       {/* Footer */}
       <DialogFooter className="sticky bottom-0 bg-white border-t pt-4 flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={form.formState.isSubmitting}>
           Cancel
         </Button>
-        <Button type="submit" disabled={loading}>
-          {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+        <Button type="submit" disabled={form.formState.isSubmitting}>
+          {form.formState.isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           Add Work Item
         </Button>
       </DialogFooter>
     </form>
+    </Form>
   </DialogContent>
 </Dialog>
 
