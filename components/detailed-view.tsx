@@ -1,19 +1,19 @@
 "use client"
 
-import type { Estimate } from "@/lib/types"
+import type { EstimateWithItems } from "@/lib/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 interface DetailedViewProps {
-  estimate: Estimate
+  estimate: EstimateWithItems
 }
 
 export function DetailedView({ estimate }: DetailedViewProps) {
   const subtotal = estimate.workItems.reduce((sum, item) => sum + item.amount, 0)
-  const cgstAmount = (subtotal * estimate.cgst) / 100
-  const sgstAmount = (subtotal * estimate.sgst) / 100
-  const lwCessAmount = (subtotal * estimate.lwCess) / 100
-  const contingencyAmount = (subtotal * estimate.contingency) / 100
+  const cgstAmount = (subtotal * (estimate.cgstPercent ?? 0)) / 100
+  const sgstAmount = (subtotal * (estimate.sgstPercent ?? 0)) / 100
+  const lwCessAmount = (subtotal * (estimate.cessPercent ?? 0)) / 100
+  const contingencyAmount = (subtotal * (estimate.contingency ?? 0)) / 100
   const grandTotal = subtotal + cgstAmount + sgstAmount + lwCessAmount + contingencyAmount
 
   return (
@@ -73,14 +73,14 @@ export function DetailedView({ estimate }: DetailedViewProps) {
                   {/* Main Item Row */}
                   <TableRow key={item.id} className="font-medium">
                     <TableCell>{item.itemNo}</TableCell>
-                    <TableCell>{item.pageRef && item.itemRef ? `${item.pageRef}/${item.itemRef}` : "-"}</TableCell>
+                    <TableCell>{item.pageRef ?? "-"}</TableCell>
                     <TableCell>{item.description}</TableCell>
                     <TableCell className="text-center">-</TableCell>
                     <TableCell className="text-center">-</TableCell>
                     <TableCell className="text-center">-</TableCell>
                     <TableCell className="text-center">-</TableCell>
                     <TableCell className="text-right">{item.quantity.toFixed(3)}</TableCell>
-                    <TableCell>{item.unit.name}</TableCell>
+                    <TableCell>{item.unit.unitSymbol}</TableCell>
                     <TableCell className="text-right">{item.rate.toFixed(2)}</TableCell>
                     <TableCell className="text-right font-semibold">{item.amount.toFixed(2)}</TableCell>
                   </TableRow>
@@ -114,34 +114,34 @@ export function DetailedView({ estimate }: DetailedViewProps) {
                 <TableCell className="text-right">₹ {subtotal.toFixed(2)}</TableCell>
               </TableRow>
 
-              {estimate.cgst > 0 && (
+              {(estimate.cgstPercent ?? 0) > 0 && (
                 <TableRow>
                   <TableCell colSpan={10} className="text-right">
-                    CGST @ {estimate.cgst}%:
+                    CGST @ {estimate.cgstPercent}%:
                   </TableCell>
                   <TableCell className="text-right">₹ {cgstAmount.toFixed(2)}</TableCell>
                 </TableRow>
               )}
 
-              {estimate.sgst > 0 && (
+              {(estimate.sgstPercent ?? 0) > 0 && (
                 <TableRow>
                   <TableCell colSpan={10} className="text-right">
-                    SGST @ {estimate.sgst}%:
+                    SGST @ {estimate.sgstPercent}%:
                   </TableCell>
                   <TableCell className="text-right">₹ {sgstAmount.toFixed(2)}</TableCell>
                 </TableRow>
               )}
 
-              {estimate.lwCess > 0 && (
+              {(estimate.cessPercent ?? 0) > 0 && (
                 <TableRow>
                   <TableCell colSpan={10} className="text-right">
-                    L.W. Cess @ {estimate.lwCess}%:
+                    L.W. Cess @ {estimate.cessPercent}%:
                   </TableCell>
                   <TableCell className="text-right">₹ {lwCessAmount.toFixed(2)}</TableCell>
                 </TableRow>
               )}
 
-              {estimate.contingency > 0 && (
+              {(estimate.contingency ?? 0) > 0 && (
                 <TableRow>
                   <TableCell colSpan={10} className="text-right">
                     Contingency @ {estimate.contingency}%:

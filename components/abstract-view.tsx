@@ -26,9 +26,9 @@ interface Estimate {
   description: string | null
   location: string | null
   createdAt: Date
-  cgst: number
-  sgst: number
-  lwCess: number
+  cgstPercent: number
+  sgstPercent: number
+  cessPercent: number
   contingency: number
   workItems: WorkItem[]
 }
@@ -40,9 +40,9 @@ interface AbstractViewProps {
 export function AbstractView({ estimate }: AbstractViewProps) {
   const subTotal = estimate.workItems.reduce((sum, item) => sum + item.amount, 0)
 
-  const cgst = (subTotal * estimate.cgst) / 100
-  const sgst = (subTotal * estimate.sgst) / 100
-  const lwCess = (subTotal * estimate.lwCess) / 100
+  const cgst = (subTotal * estimate.cgstPercent) / 100
+  const sgst = (subTotal * estimate.sgstPercent) / 100
+  const lwCess = (subTotal * estimate.cessPercent) / 100
   const contingency = (subTotal * estimate.contingency) / 100
 
   const totalAmount = subTotal + cgst + sgst + lwCess + contingency
@@ -126,10 +126,10 @@ export function AbstractView({ estimate }: AbstractViewProps) {
                 </TableCell>
               </TableRow>
 
-              {estimate.cgst > 0 && (
+              {estimate.cgstPercent > 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-right">
-                    Add CGST @ {estimate.cgst}%:
+                    Add CGST @ {estimate.cgstPercent}%:
                   </TableCell>
                   <TableCell className="text-right">
                     ₹{cgst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
@@ -137,10 +137,10 @@ export function AbstractView({ estimate }: AbstractViewProps) {
                 </TableRow>
               )}
 
-              {estimate.sgst > 0 && (
+              {estimate.sgstPercent > 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-right">
-                    Add SGST @ {estimate.sgst}%:
+                    Add SGST @ {estimate.sgstPercent}%:
                   </TableCell>
                   <TableCell className="text-right">
                     ₹{sgst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
@@ -148,10 +148,10 @@ export function AbstractView({ estimate }: AbstractViewProps) {
                 </TableRow>
               )}
 
-              {estimate.lwCess > 0 && (
+              {estimate.cessPercent > 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-right">
-                    Add L.W. Cess @ {estimate.lwCess}%:
+                    Add L.W. Cess @ {estimate.cessPercent}%:
                   </TableCell>
                   <TableCell className="text-right">
                     ₹{lwCess.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
