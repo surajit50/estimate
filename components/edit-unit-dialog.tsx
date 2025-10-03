@@ -1,8 +1,10 @@
 "use client"
 
-import type React from "react"
+import * as React from "react"
 
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -13,9 +15,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Loader2 } from "lucide-react"
 import type { UnitMasterType } from "@/lib/types"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { unitSchema, type UnitFormValues } from "@/lib/schemas"
 
 interface EditUnitDialogProps {
   unit: UnitMasterType | null
@@ -24,32 +27,24 @@ interface EditUnitDialogProps {
 }
 
 export function EditUnitDialog({ unit, onOpenChange, onEdit }: EditUnitDialogProps) {
-  const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    unitName: "",
-    unitSymbol: "",
+  const form = useForm<UnitFormValues>({
+    resolver: zodResolver(unitSchema),
+    defaultValues: { unitName: "", unitSymbol: "" },
   })
 
   useEffect(() => {
     if (unit) {
-      setFormData({
-        unitName: unit.unitName,
-        unitSymbol: unit.unitSymbol,
-      })
+      form.reset({ unitName: unit.unitName, unitSymbol: unit.unitSymbol })
     }
   }, [unit])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const onSubmit = async (values: UnitFormValues) => {
     if (!unit) return
-
-    setLoading(true)
-
     try {
       const response = await fetch(`/api/units/${unit.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(values),
       })
 
       if (response.ok) {
@@ -58,8 +53,6 @@ export function EditUnitDialog({ unit, onOpenChange, onEdit }: EditUnitDialogPro
       }
     } catch (error) {
       console.error("Error updating unit:", error)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -70,39 +63,47 @@ export function EditUnitDialog({ unit, onOpenChange, onEdit }: EditUnitDialogPro
           <DialogTitle>Edit Unit</DialogTitle>
           <DialogDescription>Update the measurement unit details.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-unitName">Unit Name *</Label>
-              <Input
-                id="edit-unitName"
-                value={formData.unitName}
-                onChange={(e) => setFormData({ ...formData, unitName: e.target.value })}
-                placeholder="e.g., Square Meter"
-                required
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <div className="space-y-4 py-4">
+              <FormField
+                control={form.control}
+                name="unitName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Unit Name *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Square Meter" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="unitSymbol"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Unit Symbol *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., m²" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-unitSymbol">Unit Symbol *</Label>
-              <Input
-                id="edit-unitSymbol"
-                value={formData.unitSymbol}
-                onChange={(e) => setFormData({ ...formData, unitSymbol: e.target.value })}
-                placeholder="e.g., m²"
-                required
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Update Unit
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={form.formState.isSubmitting}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Update Unit
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   )

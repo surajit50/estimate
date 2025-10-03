@@ -1,8 +1,10 @@
 "use client"
 
-import type React from "react"
+import * as React from "react"
 
-import { useState } from "react"
+import { useEffect } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -13,8 +15,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Loader2 } from "lucide-react"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { unitSchema, type UnitFormValues } from "@/lib/schemas"
 
 interface AddUnitDialogProps {
   open: boolean
@@ -23,32 +26,32 @@ interface AddUnitDialogProps {
 }
 
 export function AddUnitDialog({ open, onOpenChange, onAdd }: AddUnitDialogProps) {
-  const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    unitName: "",
-    unitSymbol: "",
+  const form = useForm<UnitFormValues>({
+    resolver: zodResolver(unitSchema),
+    defaultValues: { unitName: "", unitSymbol: "" },
   })
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+  useEffect(() => {
+    if (!open) {
+      form.reset({ unitName: "", unitSymbol: "" })
+    }
+  }, [open])
 
+  const onSubmit = async (values: UnitFormValues) => {
     try {
       const response = await fetch("/api/units", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(values),
       })
 
       if (response.ok) {
         const newUnit = await response.json()
         onAdd(newUnit)
-        setFormData({ unitName: "", unitSymbol: "" })
+        form.reset({ unitName: "", unitSymbol: "" })
       }
     } catch (error) {
       console.error("Error adding unit:", error)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -59,39 +62,47 @@ export function AddUnitDialog({ open, onOpenChange, onAdd }: AddUnitDialogProps)
           <DialogTitle>Add New Unit</DialogTitle>
           <DialogDescription>Add a new measurement unit to the system.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="unitName">Unit Name *</Label>
-              <Input
-                id="unitName"
-                value={formData.unitName}
-                onChange={(e) => setFormData({ ...formData, unitName: e.target.value })}
-                placeholder="e.g., Square Meter"
-                required
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <div className="space-y-4 py-4">
+              <FormField
+                control={form.control}
+                name="unitName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Unit Name *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Square Meter" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="unitSymbol"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Unit Symbol *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., m²" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="unitSymbol">Unit Symbol *</Label>
-              <Input
-                id="unitSymbol"
-                value={formData.unitSymbol}
-                onChange={(e) => setFormData({ ...formData, unitSymbol: e.target.value })}
-                placeholder="e.g., m²"
-                required
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Add Unit
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={form.formState.isSubmitting}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Add Unit
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   )

@@ -1,15 +1,17 @@
 "use client"
 
-import type React from "react"
+import * as React from "react"
 
-import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { estimateSchema, type EstimateFormValues } from "@/lib/schemas"
 import { ESTIMATE_CATEGORIES } from "@/lib/types"
 import { Loader2 } from "lucide-react"
 
@@ -30,23 +32,23 @@ interface EstimateFormProps {
 
 export function EstimateForm({ estimate }: EstimateFormProps) {
   const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    title: estimate?.title || "",
-    category: estimate?.category || "",
-    description: estimate?.description || "",
-    location: estimate?.location || "",
-    activityCode: estimate?.activityCode || "",
-    cgstPercent: estimate?.cgstPercent?.toString() || "9",
-    sgstPercent: estimate?.sgstPercent?.toString() || "9",
-    cessPercent: estimate?.cessPercent?.toString() || "1",
-    contingency: estimate?.contingency?.toString() || "0",
+
+  const form = useForm<EstimateFormValues>({
+    resolver: zodResolver(estimateSchema),
+    defaultValues: {
+      title: estimate?.title || "",
+      category: (estimate?.category as any) || "",
+      description: estimate?.description || "",
+      location: estimate?.location || "",
+      activityCode: estimate?.activityCode || "",
+      cgstPercent: estimate?.cgstPercent ?? 9,
+      sgstPercent: estimate?.sgstPercent ?? 9,
+      cessPercent: estimate?.cessPercent ?? 1,
+      contingency: estimate?.contingency ?? 0,
+    },
   })
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-
+  const onSubmit = async (values: EstimateFormValues) => {
     try {
       const url = estimate ? `/api/estimates/${estimate.id}` : "/api/estimates"
       const method = estimate ? "PUT" : "POST"
@@ -54,13 +56,7 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          cgstPercent: Number.parseFloat(formData.cgstPercent),
-          sgstPercent: Number.parseFloat(formData.sgstPercent),
-          cessPercent: Number.parseFloat(formData.cessPercent),
-          contingency: Number.parseFloat(formData.contingency),
-        }),
+        body: JSON.stringify(values),
       })
 
       if (response.ok) {
@@ -69,8 +65,6 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
       }
     } catch (error) {
       console.error("Error saving estimate:", error)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -85,132 +79,161 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
         </p>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="title">Estimate Title *</Label>
-            <Input
-              id="title"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Enter estimate title"
-              required
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Estimate Title *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter estimate title" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="category">Category *</Label>
-              <Select
-                value={formData.category}
-                onValueChange={(value) => setFormData({ ...formData, category: value })}
-                required
-              >
-                <SelectTrigger id="category">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ESTIMATE_CATEGORIES.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category *</FormLabel>
+                    <FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ESTIMATE_CATEGORIES.map((category) => (
+                            <SelectItem key={category} value={category}>
+                              {category}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <div className="space-y-2">
-              <Label htmlFor="activityCode">Activity Code</Label>
-              <Input
-                id="activityCode"
-                value={formData.activityCode}
-                onChange={(e) => setFormData({ ...formData, activityCode: e.target.value })}
-                placeholder="e.g., 70330612"
+              <FormField
+                control={form.control}
+                name="activityCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Activity Code</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., 70330612" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
-            <Input
-              id="location"
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              placeholder="Enter project location"
+            <FormField
+              control={form.control}
+              name="location"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Location</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter project location" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Enter estimate description"
-              rows={4}
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea rows={4} placeholder="Enter estimate description" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div className="space-y-4 p-6 bg-gradient-to-r from-muted/30 to-muted/50 rounded-xl border border-border/50">
-            <h3 className="font-semibold text-lg text-foreground">Tax & Additional Charges</h3>
-            <p className="text-sm text-muted-foreground">Configure tax rates and additional charges for your estimate</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="cgstPercent">CGST (%)</Label>
-                <Input
-                  id="cgstPercent"
-                  type="number"
-                  step="0.01"
-                  value={formData.cgstPercent}
-                  onChange={(e) => setFormData({ ...formData, cgstPercent: e.target.value })}
-                  placeholder="9.00"
+            <div className="space-y-4 p-6 bg-gradient-to-r from-muted/30 to-muted/50 rounded-xl border border-border/50">
+              <h3 className="font-semibold text-lg text-foreground">Tax & Additional Charges</h3>
+              <p className="text-sm text-muted-foreground">Configure tax rates and additional charges for your estimate</p>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="cgstPercent"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CGST (%)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" placeholder="9.00" value={field.value ?? ""} onChange={field.onChange} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sgstPercent">SGST (%)</Label>
-                <Input
-                  id="sgstPercent"
-                  type="number"
-                  step="0.01"
-                  value={formData.sgstPercent}
-                  onChange={(e) => setFormData({ ...formData, sgstPercent: e.target.value })}
-                  placeholder="9.00"
+                <FormField
+                  control={form.control}
+                  name="sgstPercent"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>SGST (%)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" placeholder="9.00" value={field.value ?? ""} onChange={field.onChange} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cessPercent">L.W. Cess (%)</Label>
-                <Input
-                  id="cessPercent"
-                  type="number"
-                  step="0.01"
-                  value={formData.cessPercent}
-                  onChange={(e) => setFormData({ ...formData, cessPercent: e.target.value })}
-                  placeholder="1.00"
+                <FormField
+                  control={form.control}
+                  name="cessPercent"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>L.W. Cess (%)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" placeholder="1.00" value={field.value ?? ""} onChange={field.onChange} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="contingency">Contingency (₹)</Label>
-                <Input
-                  id="contingency"
-                  type="number"
-                  step="0.01"
-                  value={formData.contingency}
-                  onChange={(e) => setFormData({ ...formData, contingency: e.target.value })}
-                  placeholder="0.00"
+                <FormField
+                  control={form.control}
+                  name="contingency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contingency (₹)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" placeholder="0.00" value={field.value ?? ""} onChange={field.onChange} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
               </div>
             </div>
-          </div>
 
-          <div className="flex gap-4 pt-6">
-            <Button type="submit" disabled={loading} size="lg" className="flex-1 group">
-              {loading && <Loader2 className="h-5 w-5 mr-2 animate-spin" />}
-              {estimate ? "Update Estimate" : "Create Estimate"}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading} size="lg">
-              Cancel
-            </Button>
-          </div>
-        </form>
+            <div className="flex gap-4 pt-6">
+              <Button type="submit" size="lg" className="flex-1 group" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting && <Loader2 className="h-5 w-5 mr-2 animate-spin" />}
+                {estimate ? "Update Estimate" : "Create Estimate"}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => router.back()} disabled={form.formState.isSubmitting} size="lg">
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </Form>
       </CardContent>
     </Card>
   )
