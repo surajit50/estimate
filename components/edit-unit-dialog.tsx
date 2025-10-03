@@ -15,17 +15,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2 } from "lucide-react"
-
-interface Unit {
-  id: string
-  unitName: string
-  unitSymbol: string
-}
+import type { UnitMasterType } from "@/lib/types"
 
 interface EditUnitDialogProps {
-  unit: Unit | null
+  unit: UnitMasterType | null
   onOpenChange: (open: boolean) => void
-  onEdit: (unit: Unit) => void
+  onEdit: (unit: UnitMasterType) => void
 }
 
 export function EditUnitDialog({ unit, onOpenChange, onEdit }: EditUnitDialogProps) {
