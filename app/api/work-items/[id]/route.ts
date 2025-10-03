@@ -7,7 +7,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     const { pageRef, itemRef, description, unitId, rate, length, width, height, quantity, amount, subItems } = body
     const { id } = await context.params
 
-    await prisma.subItem.deleteMany({
+    await prisma.subWorkItem.deleteMany({
       where: { workItemId: id },
     })
 
