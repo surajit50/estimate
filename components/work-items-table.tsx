@@ -135,9 +135,9 @@ export function WorkItemsTable({
                           </TableCell>
                           <TableCell className="font-bold">{item.itemNo}</TableCell>
                           <TableCell>
-                            {item.pageRef && item.itemRef && (
+                            {item.pageRef && (
                               <Badge variant="outline" className="text-xs">
-                                {item.pageRef}/{item.itemRef}
+                                {item.pageRef}
                               </Badge>
                             )}
                           </TableCell>
