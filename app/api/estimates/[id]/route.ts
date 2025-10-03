@@ -30,7 +30,20 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const body = await request.json()
-    const { title, category, description, location, activityCode, cgst, sgst, lwCess, contingency } = body
+    const {
+      title,
+      category,
+      description,
+      location,
+      activityCode,
+      cgst,
+      sgst,
+      lwCess,
+      contingency,
+      cgstPercent,
+      sgstPercent,
+      cessPercent,
+    } = body
 
     const { id } = await context.params
     const estimate = await prisma.estimate.update({
@@ -41,10 +54,10 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
         description: description || null,
         location: location || null,
         activityCode: activityCode || null,
-        cgst: cgst || 0,
-        sgst: sgst || 0,
-        lwCess: lwCess || 0,
-        contingency: contingency || 0,
+        cgstPercent: (cgstPercent ?? cgst ?? 0),
+        sgstPercent: (sgstPercent ?? sgst ?? 0),
+        cessPercent: (cessPercent ?? lwCess ?? 0),
+        contingency: contingency ?? 0,
       },
     })
 
