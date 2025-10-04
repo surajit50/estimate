@@ -555,12 +555,13 @@ export function AddWorkItemDialog({
                                 <div className="flex flex-col justify-end">
                                   <FormLabel className="text-xs">Sub-total</FormLabel>
                                   <p className="text-sm font-medium text-primary py-2">
-                                    {(
-                                      (Number(form.watch(`subCategories.${categoryIndex}.subItems.${subItemIndex}.nos`) || 0) *
-                                      (Number(form.watch(`subCategories.${categoryIndex}.subItems.${subItemIndex}.length`) || 0) *
-                                      (Number(form.watch(`subCategories.${categoryIndex}.subItems.${subItemIndex}.breadth`) || 0) *
-                                      (Number(form.watch(`subCategories.${categoryIndex}.subItems.${subItemIndex}.depth`) || 0)
-                                    ).toFixed(3)}{" "}
+                                    {(() => {
+                                      const nos = Number(form.watch(`subCategories.${categoryIndex}.subItems.${subItemIndex}.nos`) || 0)
+                                      const length = Number(form.watch(`subCategories.${categoryIndex}.subItems.${subItemIndex}.length`) || 0)
+                                      const breadth = Number(form.watch(`subCategories.${categoryIndex}.subItems.${subItemIndex}.breadth`) || 0)
+                                      const depth = Number(form.watch(`subCategories.${categoryIndex}.subItems.${subItemIndex}.depth`) || 0)
+                                      return ((nos * length * breadth * depth) || 0).toFixed(3)
+                                    })()}{" "}
                                     m³
                                   </p>
                                 </div>
@@ -735,7 +736,6 @@ export function AddWorkItemDialog({
                     </div>
                   </div>
                 </div>
-              </section>
             </div>
 
             {/* Sticky Footer */}
