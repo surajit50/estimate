@@ -65,13 +65,13 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
       const hasSubItems = item.subItems && item.subItems.length > 0
 
       if (hasSubItems) {
-        // Use existing sub-items
+        // Use existing sub-items with safe array access
         form.reset({
           pageRef: item.pageRef || "",
           description: item.description,
           unitId: item.unitId,
           rate: item.rate,
-          subItems: item.subItems.map((s) => ({
+          subItems: (item.subItems || []).map((s) => ({
             id: s.id,
             description: s.description,
             nos: s.nos,
