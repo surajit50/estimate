@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Plus, Trash2 } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 
-import type { WorkItemWithUnit, SubWorkItemType, UnitMasterType, RateLibraryType } from "@/lib/types"
+import type { WorkItemWithUnit, UnitMasterType, RateLibraryType } from "@/lib/types"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { workItemSchema, type WorkItemFormValues } from "@/lib/schemas"
 
@@ -63,7 +63,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
     if (item) {
       // Convert old structure to new structure if needed
       const hasSubItems = item.subItems && item.subItems.length > 0
-      
+
       if (hasSubItems) {
         // Use existing sub-items
         form.reset({
@@ -87,13 +87,15 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
           description: item.description,
           unitId: item.unitId,
           rate: item.rate,
-          subItems: [{
-            description: item.description,
-            nos: 1,
-            length: item.length || 1,
-            breadth: item.width || 1, // Note: width becomes breadth
-            depth: item.height || 1,
-          }],
+          subItems: [
+            {
+              description: item.description,
+              nos: 1,
+              length: item.length || 1,
+              breadth: item.width || 1, // Note: width becomes breadth
+              depth: item.height || 1,
+            },
+          ],
         })
       }
     }
@@ -105,7 +107,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
 
   const calculatedQuantity = React.useMemo(() => {
     if (!watchedSubItems || watchedSubItems.length === 0) return 0
-    
+
     return watchedSubItems.reduce((sum: number, item: any) => {
       const nos = Number(item.nos) || 0
       const length = Number(item.length) || 0
@@ -226,11 +228,11 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                     <FormItem className="mt-4">
                       <FormLabel>Item Description *</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          rows={3} 
-                          className="resize-none" 
-                          placeholder="Enter detailed work item description" 
-                          {...field} 
+                        <Textarea
+                          rows={3}
+                          className="resize-none"
+                          placeholder="Enter detailed work item description"
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
@@ -245,12 +247,12 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                     <FormItem className="mt-4">
                       <FormLabel>Rate (₹) *</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          step="0.01" 
-                          placeholder="Enter rate" 
-                          value={field.value ?? ""} 
-                          onChange={field.onChange} 
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="Enter rate"
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
                         />
                       </FormControl>
                       <FormMessage />
@@ -268,9 +270,9 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                       Update sub-items to calculate total quantity. Each sub-item requires dimensions.
                     </p>
                   </div>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => append({ description: "", nos: 1, length: 1, breadth: 1, depth: 1 })}
                   >
                     <Plus className="h-4 w-4 mr-2" />
@@ -289,10 +291,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                             <FormItem className="flex-1">
                               <FormLabel className="text-sm font-medium">Sub-item Description</FormLabel>
                               <FormControl>
-                                <Input 
-                                  placeholder="Describe this part of the work..." 
-                                  {...field} 
-                                />
+                                <Input placeholder="Describe this part of the work..." {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -310,80 +309,84 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                           </Button>
                         )}
                       </div>
-                      
+
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                        <FormField 
-                          control={form.control} 
-                          name={`subItems.${index}.nos` as const} 
+                        <FormField
+                          control={form.control}
+                          name={`subItems.${index}.nos` as const}
                           render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Quantity (Nos)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="Nos" 
-                                value={field.value ?? ""} 
-                                onChange={field.onChange} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField 
-                          control={form.control} 
-                          name={`subItems.${index}.length` as const} 
+                            <FormItem>
+                              <FormLabel className="text-xs">Quantity (Nos)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Nos"
+                                  value={field.value ?? ""}
+                                  onChange={field.onChange}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`subItems.${index}.length` as const}
                           render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Length (m)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="Length" 
-                                value={field.value ?? ""} 
-                                onChange={field.onChange} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField 
-                          control={form.control} 
-                          name={`subItems.${index}.breadth` as const} 
+                            <FormItem>
+                              <FormLabel className="text-xs">Length (m)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Length"
+                                  value={field.value ?? ""}
+                                  onChange={field.onChange}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`subItems.${index}.breadth` as const}
                           render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Breadth (m)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="Breadth" 
-                                value={field.value ?? ""} 
-                                onChange={field.onChange} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField 
-                          control={form.control} 
-                          name={`subItems.${index}.depth` as const} 
+                            <FormItem>
+                              <FormLabel className="text-xs">Breadth (m)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Breadth"
+                                  value={field.value ?? ""}
+                                  onChange={field.onChange}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`subItems.${index}.depth` as const}
                           render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Depth (m)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="Depth" 
-                                value={field.value ?? ""} 
-                                onChange={field.onChange} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
+                            <FormItem>
+                              <FormLabel className="text-xs">Depth (m)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Depth"
+                                  value={field.value ?? ""}
+                                  onChange={field.onChange}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                         <div className="flex flex-col justify-end">
                           <FormLabel className="text-xs">Sub-total</FormLabel>
                           <p className="text-sm font-medium text-primary py-2">
@@ -392,7 +395,8 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                               (Number(watchedSubItems?.[index]?.length) || 0) *
                               (Number(watchedSubItems?.[index]?.breadth) || 0) *
                               (Number(watchedSubItems?.[index]?.depth) || 0)
-                            ).toFixed(3)} m³
+                            ).toFixed(3)}{" "}
+                            m³
                           </p>
                         </div>
                       </div>
@@ -421,10 +425,10 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
             {/* Sticky Footer */}
             <DialogFooter className="border-t bg-white px-6 py-4 shrink-0">
               <div className="flex w-full justify-end gap-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => onOpenChange(false)} 
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
                   disabled={form.formState.isSubmitting}
                 >
                   Cancel
