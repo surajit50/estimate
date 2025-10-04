@@ -89,6 +89,21 @@ export function AddWorkItemDialog({
     name: "subCategories",
   })
 
+  // Watch ALL form values for real-time updates
+  const watchedValues = form.watch();
+  
+  // Extract watched values with proper fallbacks
+  const watchedRate = Number(watchedValues.rate) || 0;
+  const watchedSubItems = watchedValues.subItems || [];
+  const watchedSubCategories = watchedValues.subCategories || [];
+  const selectedUnitId = watchedValues.unitId;
+
+  const selectedUnit = units.find((u) => u.id === selectedUnitId);
+  const unitSymbol = selectedUnit?.unitSymbol || "m³";
+
+  const hasDirectSubItems = subItemFields.length > 0;
+  const hasHierarchicalStructure = subCategoryFields.length > 0;
+
   // Reset form when dialog closes
   React.useEffect(() => {
     if (!open) {
@@ -103,72 +118,52 @@ export function AddWorkItemDialog({
     }
   }, [open, form])
 
-  // Watch all form values that affect calculations
-  const watchedValues = form.watch();
-  const watchedRate = watchedValues.rate;
-  const watchedSubItems = watchedValues.subItems || [];
-  const watchedSubCategories = watchedValues.subCategories || [];
-  const selectedUnitId = watchedValues.unitId;
-
-  const selectedUnit = units.find((u) => u.id === selectedUnitId);
-  const unitSymbol = selectedUnit?.unitSymbol || "m³";
-
-  const hasDirectSubItems = subItemFields.length > 0;
-  const hasHierarchicalStructure = subCategoryFields.length > 0;
-
-  // Fixed calculation functions
-  const calculateSubItemQuantity = (subItem: SubItemFormValues): number => {
-    const nos = Number(subItem.nos) || 0;
-    const length = Number(subItem.length) || 0;
-    const breadth = Number(subItem.breadth) || 0;
-    const depth = Number(subItem.depth) || 0;
-    return nos * length * breadth * depth;
-  };
-
-  const calculateSubItemQuantitySafe = (subItem: any): number => {
+  // Optimized calculation function
+  const calculateSubItemQuantity = React.useCallback((subItem: any): number => {
     if (!subItem) return 0;
+    
     const nos = Number(subItem.nos) || 0;
     const length = Number(subItem.length) || 0;
     const breadth = Number(subItem.breadth) || 0;
     const depth = Number(subItem.depth) || 0;
+    
     return nos * length * breadth * depth;
-  };
+  }, []);
 
-  // Memoized quantity calculation - FIXED
+  // Real-time calculated quantity - FIXED with proper dependency tracking
   const calculatedQuantity = React.useMemo(() => {
     let totalQuantity = 0;
 
     // Calculate from direct sub-items
-    if (watchedSubItems && watchedSubItems.length > 0) {
+    if (watchedSubItems && Array.isArray(watchedSubItems)) {
       watchedSubItems.forEach((item: any) => {
-        totalQuantity += calculateSubItemQuantitySafe(item);
+        totalQuantity += calculateSubItemQuantity(item);
       });
     }
 
     // Calculate from sub-categories
-    if (watchedSubCategories && watchedSubCategories.length > 0) {
+    if (watchedSubCategories && Array.isArray(watchedSubCategories)) {
       watchedSubCategories.forEach((category: any) => {
-        if (category.subItems && category.subItems.length > 0) {
+        if (category?.subItems && Array.isArray(category.subItems)) {
           category.subItems.forEach((subItem: any) => {
-            totalQuantity += calculateSubItemQuantitySafe(subItem);
+            totalQuantity += calculateSubItemQuantity(subItem);
           });
         }
       });
     }
 
     return totalQuantity;
-  }, [watchedSubItems, watchedSubCategories]);
+  }, [watchedSubItems, watchedSubCategories, calculateSubItemQuantity]);
 
-  // Memoized amount calculation - FIXED
+  // Real-time calculated amount - FIXED
   const calculatedAmount = React.useMemo(() => {
-    const rate = Number(watchedRate) || 0;
-    return calculatedQuantity * rate;
-  }, [watchedRate, calculatedQuantity]);
+    return calculatedQuantity * watchedRate;
+  }, [calculatedQuantity, watchedRate]);
 
-  // Calculate individual sub-item quantities for display
-  const getSubItemQuantity = (subItem: any): number => {
-    return calculateSubItemQuantitySafe(subItem);
-  };
+  // Get individual sub-item quantity for display
+  const getSubItemQuantity = React.useCallback((subItem: any): number => {
+    return calculateSubItemQuantity(subItem);
+  }, [calculateSubItemQuantity]);
 
   // Rate selection handler
   const handleRateSelect = (rateId: string) => {
@@ -217,22 +212,20 @@ export function AddWorkItemDialog({
 
   // Form validation state
   const isFormValid = React.useMemo(() => {
-    const basicFieldsValid = form.formState.isValid;
     const hasStructure = hasDirectSubItems || hasHierarchicalStructure;
     const hasPositiveQuantity = calculatedQuantity > 0;
     const hasDescription = watchedValues.description?.trim().length > 0;
     const hasUnit = watchedValues.unitId?.length > 0;
-    const hasRate = Number(watchedValues.rate) > 0;
+    const hasRate = watchedRate > 0;
 
-    return basicFieldsValid && hasStructure && hasPositiveQuantity && hasDescription && hasUnit && hasRate;
+    return hasStructure && hasPositiveQuantity && hasDescription && hasUnit && hasRate;
   }, [
-    form.formState.isValid, 
     hasDirectSubItems, 
     hasHierarchicalStructure, 
     calculatedQuantity,
     watchedValues.description,
     watchedValues.unitId,
-    watchedValues.rate
+    watchedRate
   ]);
 
   // Submit handler
@@ -287,6 +280,14 @@ export function AddWorkItemDialog({
       console.error("Error adding work item:", error);
     }
   };
+
+  // Debug: Log changes to see what's happening
+  React.useEffect(() => {
+    console.log("SubItems changed:", watchedSubItems);
+    console.log("SubCategories changed:", watchedSubCategories);
+    console.log("Total Quantity:", calculatedQuantity);
+    console.log("Total Amount:", calculatedAmount);
+  }, [watchedSubItems, watchedSubCategories, calculatedQuantity, calculatedAmount]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -400,7 +401,10 @@ export function AddWorkItemDialog({
                           step="0.01"
                           placeholder="Enter rate"
                           value={field.value ?? ""}
-                          onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                          onChange={(e) => {
+                            const value = e.target.value === "" ? 0 : Number(e.target.value);
+                            field.onChange(value);
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -574,7 +578,10 @@ export function AddWorkItemDialog({
                                             step="0.01"
                                             placeholder="Nos"
                                             value={field.value ?? ""}
-                                            onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                                            onChange={(e) => {
+                                              const value = e.target.value === "" ? 0 : Number(e.target.value);
+                                              field.onChange(value);
+                                            }}
                                           />
                                         </FormControl>
                                         <FormMessage />
@@ -593,7 +600,10 @@ export function AddWorkItemDialog({
                                             step="0.01"
                                             placeholder="Length"
                                             value={field.value ?? ""}
-                                            onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                                            onChange={(e) => {
+                                              const value = e.target.value === "" ? 0 : Number(e.target.value);
+                                              field.onChange(value);
+                                            }}
                                           />
                                         </FormControl>
                                         <FormMessage />
@@ -612,7 +622,10 @@ export function AddWorkItemDialog({
                                             step="0.01"
                                             placeholder="Breadth"
                                             value={field.value ?? ""}
-                                            onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                                            onChange={(e) => {
+                                              const value = e.target.value === "" ? 0 : Number(e.target.value);
+                                              field.onChange(value);
+                                            }}
                                           />
                                         </FormControl>
                                         <FormMessage />
@@ -631,7 +644,10 @@ export function AddWorkItemDialog({
                                             step="0.01"
                                             placeholder="Depth"
                                             value={field.value ?? ""}
-                                            onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                                            onChange={(e) => {
+                                              const value = e.target.value === "" ? 0 : Number(e.target.value);
+                                              field.onChange(value);
+                                            }}
                                           />
                                         </FormControl>
                                         <FormMessage />
@@ -722,7 +738,10 @@ export function AddWorkItemDialog({
                                       step="0.01"
                                       placeholder="Nos"
                                       value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                                      onChange={(e) => {
+                                        const value = e.target.value === "" ? 0 : Number(e.target.value);
+                                        field.onChange(value);
+                                      }}
                                     />
                                   </FormControl>
                                   <FormMessage />
@@ -741,7 +760,10 @@ export function AddWorkItemDialog({
                                       step="0.01"
                                       placeholder="Length"
                                       value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                                      onChange={(e) => {
+                                        const value = e.target.value === "" ? 0 : Number(e.target.value);
+                                        field.onChange(value);
+                                      }}
                                     />
                                   </FormControl>
                                   <FormMessage />
@@ -760,7 +782,10 @@ export function AddWorkItemDialog({
                                       step="0.01"
                                       placeholder="Breadth"
                                       value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                                      onChange={(e) => {
+                                        const value = e.target.value === "" ? 0 : Number(e.target.value);
+                                        field.onChange(value);
+                                      }}
                                     />
                                   </FormControl>
                                   <FormMessage />
@@ -779,7 +804,10 @@ export function AddWorkItemDialog({
                                       step="0.01"
                                       placeholder="Depth"
                                       value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                                      onChange={(e) => {
+                                        const value = e.target.value === "" ? 0 : Number(e.target.value);
+                                        field.onChange(value);
+                                      }}
                                     />
                                   </FormControl>
                                   <FormMessage />
@@ -800,17 +828,22 @@ export function AddWorkItemDialog({
                 </section>
               )}
 
-              {/* Summary */}
+              {/* Summary - FIXED with proper real-time updates */}
               <div className="mt-6 bg-primary/5 border rounded-lg p-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Quantity</p>
-                    <p className="text-2xl font-bold text-primary">{calculatedQuantity.toFixed(3)} {unitSymbol}</p>
+                    <p className="text-2xl font-bold text-primary">
+                      {calculatedQuantity.toFixed(3)} {unitSymbol}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Amount</p>
                     <p className="text-2xl font-bold text-primary">
-                      ₹{calculatedAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      ₹{calculatedAmount.toLocaleString("en-IN", { 
+                        minimumFractionDigits: 2, 
+                        maximumFractionDigits: 2 
+                      })}
                     </p>
                   </div>
                 </div>
@@ -822,7 +855,7 @@ export function AddWorkItemDialog({
                     <ul className="text-amber-700 list-disc list-inside mt-1 space-y-1">
                       {!watchedValues.description?.trim() && <li>Description is required</li>}
                       {!watchedValues.unitId && <li>Unit must be selected</li>}
-                      {Number(watchedValues.rate) <= 0 && <li>Rate must be greater than 0</li>}
+                      {watchedRate <= 0 && <li>Rate must be greater than 0</li>}
                       {!hasDirectSubItems && !hasHierarchicalStructure && <li>Select a work item structure</li>}
                       {calculatedQuantity <= 0 && <li>Total quantity must be greater than 0</li>}
                     </ul>
