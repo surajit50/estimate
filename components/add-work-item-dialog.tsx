@@ -246,14 +246,14 @@ export function AddWorkItemDialog({
           subCategories: (values.subCategories || []).map((category) => ({
             categoryName: category.categoryName,
             description: category.description,
-            subItems: (category.subItems || []).map((item) => ({
+            subItems: category.subItems.map((item) => ({
               description: item.description,
               nos: item.nos,
               length: item.length,
               breadth: item.breadth,
               depth: item.depth,
               quantity: calculateSubItemQuantity(item),
-              unitSymbol,
+              unitSymbol: selectedUnit?.unitSymbol || "",
             })),
           })),
           subItems: (values.subItems || []).map((item) => ({
@@ -263,7 +263,7 @@ export function AddWorkItemDialog({
             breadth: item.breadth,
             depth: item.depth,
             quantity: calculateSubItemQuantity(item),
-            unitSymbol,
+            unitSymbol: selectedUnit?.unitSymbol || "",
           })),
         }),
       });
@@ -280,14 +280,6 @@ export function AddWorkItemDialog({
       console.error("Error adding work item:", error);
     }
   };
-
-  // Debug: Log changes to see what's happening
-  React.useEffect(() => {
-    console.log("SubItems changed:", watchedSubItems);
-    console.log("SubCategories changed:", watchedSubCategories);
-    console.log("Total Quantity:", calculatedQuantity);
-    console.log("Total Amount:", calculatedAmount);
-  }, [watchedSubItems, watchedSubCategories, calculatedQuantity, calculatedAmount]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
