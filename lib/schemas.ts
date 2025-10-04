@@ -49,11 +49,8 @@ export const workItemSchema = z.object({
   description: nonEmptyString,
   unitId: nonEmptyString,
   rate: z.coerce.number().min(0, "Must be ≥ 0"),
-  length: z.coerce.number().min(0, "Must be ≥ 0"),
-  width: z.coerce.number().min(0, "Must be ≥ 0"),
-  height: z.coerce.number().min(0, "Must be ≥ 0"),
-  subItems: z.array(subItemSchema).optional().default([]),
+  // Remove these fields since we're only using sub-items now
+  subItems: z.array(subItemSchema).min(1, "At least one sub-item is required"),
 })
 
 export type WorkItemFormValues = z.infer<typeof workItemSchema>
-
