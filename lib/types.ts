@@ -46,6 +46,14 @@ export interface WorkItemWithUnit {
   quantity: number
   amount: number
   subItems?: SubWorkItemType[]
+  subCategories?: SubCategoryType[]
+}
+
+export interface SubCategoryType {
+  id: string
+  categoryName: string
+  description?: string | null
+  subItems: SubWorkItemType[]
 }
 
 export interface SubWorkItemType {
@@ -57,6 +65,7 @@ export interface SubWorkItemType {
   depth: number
   quantity: number
   unitSymbol: string
+  subCategoryId?: string | null
 }
 
 export interface UnitMasterType {

@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
       quantity,
       amount,
       subItems,
+      subCategories,
     } = body
 
     // Validation
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
       description,
       unitId,
       subItemsCount: subItems?.length || 0,
+      subCategoriesCount: subCategories?.length || 0,
     })
 
     const workItem = await prisma.workItem.create({
@@ -83,10 +85,35 @@ export async function POST(request: NextRequest) {
                 })),
               }
             : undefined,
+        subCategories:
+          subCategories && subCategories.length > 0
+            ? {
+                create: subCategories.map((category: any) => ({
+                  categoryName: category.categoryName?.trim() || "",
+                  description: category.description?.trim() || null,
+                  subItems: {
+                    create: (category.subItems || []).map((subItem: any) => ({
+                      description: subItem.description?.trim() || "",
+                      nos: parseInt(subItem.nos) || 1,
+                      length: parseFloat(subItem.length) || 0,
+                      breadth: parseFloat(subItem.breadth) || 0,
+                      depth: parseFloat(subItem.depth) || 0,
+                      quantity: parseFloat(subItem.quantity) || 0,
+                      unitSymbol: subItem.unitSymbol?.trim() || "",
+                    })),
+                  },
+                })),
+              }
+            : undefined,
       },
       include: {
         unit: true,
         subItems: true,
+        subCategories: {
+          include: {
+            subItems: true,
+          },
+        },
       },
     })
 

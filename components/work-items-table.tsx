@@ -111,7 +111,7 @@ export function WorkItemsTable({
                 </TableHeader>
                 <TableBody>
                   {workItems.map((item) => {
-                    const hasSubItems = item.subItems && item.subItems.length > 0
+                    const hasSubItems = (item.subItems && item.subItems.length > 0) || (item.subCategories && item.subCategories.length > 0)
                     const isExpanded = expandedItems.has(item.id)
 
                     return (
@@ -166,22 +166,64 @@ export function WorkItemsTable({
                           </TableCell>
                         </TableRow>
 
-                        {hasSubItems &&
-                          isExpanded &&
-                          item.subItems!.map((subItem, idx) => (
-                            <TableRow key={subItem.id} className="bg-muted/30 text-sm">
-                              <TableCell></TableCell>
-                              <TableCell></TableCell>
-                              <TableCell></TableCell>
-                              <TableCell className="pl-8 text-muted-foreground italic">{subItem.description}</TableCell>
-                              <TableCell className="text-right">{subItem.nos}</TableCell>
-                              <TableCell className="text-right">{subItem.length.toFixed(3)}</TableCell>
-                              <TableCell className="text-right">{subItem.breadth.toFixed(3)}</TableCell>
-                              <TableCell className="text-right">{subItem.depth.toFixed(3)}</TableCell>
-                              <TableCell className="text-right">{subItem.quantity.toFixed(2)}</TableCell>
-                              <TableCell colSpan={4}></TableCell>
-                            </TableRow>
-                          ))}
+                        {isExpanded && (
+                          <>
+                            {/* Direct Sub-items */}
+                            {item.subItems && item.subItems.length > 0 && item.subItems.map((subItem, idx) => (
+                              <TableRow key={subItem.id} className="bg-muted/30 text-sm">
+                                <TableCell></TableCell>
+                                <TableCell></TableCell>
+                                <TableCell></TableCell>
+                                <TableCell className="pl-8 text-muted-foreground italic">{subItem.description}</TableCell>
+                                <TableCell className="text-right">{subItem.nos}</TableCell>
+                                <TableCell className="text-right">{subItem.length.toFixed(3)}</TableCell>
+                                <TableCell className="text-right">{subItem.breadth.toFixed(3)}</TableCell>
+                                <TableCell className="text-right">{subItem.depth.toFixed(3)}</TableCell>
+                                <TableCell className="text-right">{subItem.quantity.toFixed(2)}</TableCell>
+                                <TableCell colSpan={4}></TableCell>
+                              </TableRow>
+                            ))}
+
+                            {/* Sub-categories and their sub-items */}
+                            {item.subCategories && item.subCategories.length > 0 && item.subCategories.map((subCategory, categoryIdx) => (
+                              <React.Fragment key={subCategory.id}>
+                                {/* Sub-category header */}
+                                <TableRow className="bg-blue-50/50 text-sm font-medium">
+                                  <TableCell></TableCell>
+                                  <TableCell></TableCell>
+                                  <TableCell></TableCell>
+                                  <TableCell className="pl-6 text-blue-700 font-semibold">
+                                    {subCategory.categoryName}
+                                    {subCategory.description && (
+                                      <span className="text-blue-600 text-xs block font-normal">
+                                        {subCategory.description}
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell colSpan={8}></TableCell>
+                                </TableRow>
+
+                                {/* Sub-items within this category */}
+                                {subCategory.subItems && subCategory.subItems.map((subItem, subItemIdx) => (
+                                  <TableRow key={subItem.id} className="bg-muted/20 text-sm">
+                                    <TableCell></TableCell>
+                                    <TableCell></TableCell>
+                                    <TableCell></TableCell>
+                                    <TableCell className="pl-12 text-muted-foreground italic">
+                                      {subItem.description}
+                                    </TableCell>
+                                    <TableCell className="text-right">{subItem.nos}</TableCell>
+                                    <TableCell className="text-right">{subItem.length.toFixed(3)}</TableCell>
+                                    <TableCell className="text-right">{subItem.breadth.toFixed(3)}</TableCell>
+                                    <TableCell className="text-right">{subItem.depth.toFixed(3)}</TableCell>
+                                    <TableCell className="text-right">{subItem.quantity.toFixed(2)}</TableCell>
+                                    <TableCell colSpan={4}></TableCell>
+                                  </TableRow>
+                                ))}
+                              </React.Fragment>
+                            ))}
+                          </>
+                        )}
                       </>
                     )
                   })}

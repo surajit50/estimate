@@ -22,6 +22,11 @@ export async function GET() {
           include: {
             unit: true,
             subItems: true,
+            subCategories: {
+              include: {
+                subItems: true,
+              },
+            },
           },
         },
       },

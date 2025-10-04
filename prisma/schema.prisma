@@ -43,17 +43,33 @@ model WorkItem {
   quantity    Float
   amount      Float
   subItems    SubWorkItem[]
+  subCategories SubCategory[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
   @@index([estimateId])
 }
 
+model SubCategory {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  workItemId  String   @db.ObjectId
+  workItem    WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  categoryName String  // e.g., "A: Lead upto 100 m", "B: Lead upto 1000 m"
+  description String?  // Optional description for the sub-category
+  subItems    SubWorkItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workItemId])
+}
+
 model SubWorkItem {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   workItemId  String   @db.ObjectId
   workItem    WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
-  description String   // e.g., "In Foundation", "For Slabs of Size- 1.00mX0.80mX0.075m(th.)"
+  subCategoryId String? @db.ObjectId
+  subCategory SubCategory? @relation(fields: [subCategoryId], references: [id], onDelete: Cascade)
+  description String   // e.g., "Girth above 300 mm to 600 mm", "In Foundation"
   nos         Float    @default(1)
   length      Float    @default(1)
   breadth     Float    @default(1)
@@ -64,6 +80,7 @@ model SubWorkItem {
   updatedAt   DateTime @updatedAt
 
   @@index([workItemId])
+  @@index([subCategoryId])
 }
 
 model UnitMaster {

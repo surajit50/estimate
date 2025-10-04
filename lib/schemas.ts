@@ -35,6 +35,20 @@ export const rateSchema = z.object({
 
 export type RateFormValues = z.infer<typeof rateSchema>
 
+export const subCategorySchema = z.object({
+  id: z.string().optional(),
+  categoryName: z.string().min(1, "Category name is required"),
+  description: z.string().optional().default(""),
+  subItems: z.array(z.object({
+    id: z.string().optional(),
+    description: z.string().optional().default(""),
+    nos: z.coerce.number().min(0, "Must be ≥ 0"),
+    length: z.coerce.number().min(0, "Must be ≥ 0"),
+    breadth: z.coerce.number().min(0, "Must be ≥ 0"),
+    depth: z.coerce.number().min(0, "Must be ≥ 0"),
+  })).min(1, "At least one sub-item is required")
+})
+
 export const subItemSchema = z.object({
   id: z.string().optional(),
   description: z.string().optional().default(""),
@@ -49,8 +63,15 @@ export const workItemSchema = z.object({
   description: nonEmptyString,
   unitId: nonEmptyString,
   rate: z.coerce.number().min(0, "Must be ≥ 0"),
-  // Remove these fields since we're only using sub-items now
-  subItems: z.array(subItemSchema).min(1, "At least one sub-item is required"),
-})
+  // Support both hierarchical structure (sub-categories) and direct sub-items
+  subCategories: z.array(subCategorySchema).optional().default([]),
+  subItems: z.array(subItemSchema).optional().default([]),
+}).refine(
+  (data) => data.subCategories.length > 0 || data.subItems.length > 0,
+  {
+    message: "Either sub-categories or direct sub-items are required",
+    path: ["subCategories"]
+  }
+)
 
 export type WorkItemFormValues = z.infer<typeof workItemSchema>

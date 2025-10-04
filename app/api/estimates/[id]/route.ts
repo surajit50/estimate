@@ -11,6 +11,11 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
           include: {
             unit: true,
             subItems: true,
+            subCategories: {
+              include: {
+                subItems: true,
+              },
+            },
           },
           orderBy: { itemNo: "asc" },
         },
