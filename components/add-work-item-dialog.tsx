@@ -34,6 +34,20 @@ interface Rate {
   standardRate: number
 }
 
+interface SubItemFormValues {
+  description: string
+  nos: number
+  length: number
+  breadth: number
+  depth: number
+}
+
+interface SubCategoryFormValues {
+  categoryName: string
+  description: string
+  subItems: SubItemFormValues[]
+}
+
 interface AddWorkItemDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -75,6 +89,20 @@ export function AddWorkItemDialog({
     name: "subCategories",
   })
 
+  // Memoized computations
+  const unitsMap = React.useMemo(() => 
+    new Map(units.map(unit => [unit.id, unit])), 
+    [units]
+  )
+
+  const selectedUnitId = form.watch("unitId")
+  const selectedUnit = unitsMap.get(selectedUnitId)
+  const unitSymbol = selectedUnit?.unitSymbol || "m³"
+
+  const hasDirectSubItems = subItemFields.length > 0
+  const hasHierarchicalStructure = subCategoryFields.length > 0
+
+  // Reset form when dialog closes
   React.useEffect(() => {
     if (!open) {
       form.reset({
@@ -86,13 +114,14 @@ export function AddWorkItemDialog({
         subItems: [],
       })
     }
-  }, [open, form])
+  }, [open, form, nextItemNo])
 
   const watch = form.watch
   const watchedRate = watch("rate")
   const watchedSubItems = watch("subItems")
   const watchedSubCategories = watch("subCategories")
 
+  // Memoized quantity calculation
   const calculatedQuantity = React.useMemo(() => {
     let totalQuantity = 0
 
@@ -125,23 +154,64 @@ export function AddWorkItemDialog({
     return totalQuantity
   }, [watchedSubItems, watchedSubCategories])
 
+  // Memoized amount calculation
   const calculatedAmount = React.useMemo(() => {
     const r = Number(watchedRate) || 0
     return calculatedQuantity * r
   }, [watchedRate, calculatedQuantity])
 
-  const handleRateSelect = (rateId: string) => {
+  // Memoized rate selection handler
+  const handleRateSelect = React.useCallback((rateId: string) => {
     const selectedRate = rates.find((r) => r.id === rateId)
     if (selectedRate) {
       form.setValue("description", selectedRate.description)
       form.setValue("unitId", selectedRate.unitId)
       form.setValue("rate", Number(selectedRate.standardRate))
     }
-  }
+  }, [rates, form])
 
+  // Form validation state
+  const isFormValid = React.useMemo(() => {
+    const basicFieldsValid = form.formState.isValid
+    const hasStructure = hasDirectSubItems || hasHierarchicalStructure
+    const hasPositiveQuantity = calculatedQuantity > 0
+    const hasDescription = form.watch("description").trim().length > 0
+    const hasUnit = form.watch("unitId").length > 0
+    const hasRate = Number(form.watch("rate")) > 0
+
+    return basicFieldsValid && hasStructure && hasPositiveQuantity && hasDescription && hasUnit && hasRate
+  }, [
+    form.formState.isValid, 
+    hasDirectSubItems, 
+    hasHierarchicalStructure, 
+    calculatedQuantity,
+    form.watch("description"),
+    form.watch("unitId"),
+    form.watch("rate")
+  ])
+
+  // Structure selection handlers
+  const handleSelectDirectSubItems = React.useCallback(() => {
+    form.setValue("subCategories", [])
+    if (subItemFields.length === 0) {
+      appendSubItem({ description: "", nos: 1, length: 1, breadth: 1, depth: 1 })
+    }
+  }, [form, subItemFields.length, appendSubItem])
+
+  const handleSelectHierarchicalStructure = React.useCallback(() => {
+    form.setValue("subItems", [])
+    if (subCategoryFields.length === 0) {
+      appendSubCategory({ 
+        categoryName: "", 
+        description: "", 
+        subItems: [{ description: "", nos: 1, length: 1, breadth: 1, depth: 1 }] 
+      })
+    }
+  }, [form, subCategoryFields.length, appendSubCategory])
+
+  // Submit handler
   const onSubmit = async (values: WorkItemFormValues) => {
     try {
-      const selectedUnit = units.find((u) => u.id === values.unitId)
       const response = await fetch("/api/work-items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -164,7 +234,7 @@ export function AddWorkItemDialog({
               breadth: item.breadth,
               depth: item.depth,
               quantity: item.nos * item.length * item.breadth * item.depth,
-              unitSymbol: selectedUnit?.unitSymbol || "",
+              unitSymbol,
             })),
           })),
           subItems: (values.subItems || []).map((item) => ({
@@ -174,26 +244,35 @@ export function AddWorkItemDialog({
             breadth: item.breadth,
             depth: item.depth,
             quantity: item.nos * item.length * item.breadth * item.depth,
-            unitSymbol: selectedUnit?.unitSymbol || "",
+            unitSymbol,
           })),
         }),
       })
 
-      if (response.ok) {
-        const newItem = await response.json()
-        onAdd(newItem)
-        form.reset({
-          pageRef: "",
-          description: "",
-          unitId: "",
-          rate: 0,
-          subCategories: [],
-          subItems: [],
-        })
-        onOpenChange(false)
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to create work item' }))
+        throw new Error(errorData.message || 'Failed to create work item')
       }
+
+      const newItem = await response.json()
+      onAdd(newItem)
+      form.reset({
+        pageRef: "",
+        description: "",
+        unitId: "",
+        rate: 0,
+        subCategories: [],
+        subItems: [],
+      })
+      onOpenChange(false)
     } catch (error) {
       console.error("Error adding work item:", error)
+      // TODO: Add toast notification here
+      // toast({
+      //   title: "Error",
+      //   description: error instanceof Error ? error.message : "Failed to create work item",
+      //   variant: "destructive",
+      // })
     }
   }
 
@@ -324,11 +403,8 @@ export function AddWorkItemDialog({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Button
                     type="button"
-                    variant="outline"
-                    onClick={() => {
-                      form.setValue("subCategories", [])
-                      appendSubItem({ description: "", nos: 1, length: 1, breadth: 1, depth: 1 })
-                    }}
+                    variant={hasDirectSubItems ? "default" : "outline"}
+                    onClick={handleSelectDirectSubItems}
                     className="h-20 flex flex-col items-center justify-center"
                   >
                     <div className="text-2xl mb-2">📦</div>
@@ -337,15 +413,8 @@ export function AddWorkItemDialog({
                   </Button>
                   <Button
                     type="button"
-                    variant="outline"
-                    onClick={() => {
-                      form.setValue("subItems", [])
-                      appendSubCategory({ 
-                        categoryName: "", 
-                        description: "", 
-                        subItems: [{ description: "", nos: 1, length: 1, breadth: 1, depth: 1 }] 
-                      })
-                    }}
+                    variant={hasHierarchicalStructure ? "default" : "outline"}
+                    onClick={handleSelectHierarchicalStructure}
                     className="h-20 flex flex-col items-center justify-center"
                   >
                     <div className="text-2xl mb-2">🏛️</div>
@@ -353,10 +422,20 @@ export function AddWorkItemDialog({
                     <div className="text-xs text-gray-600">Categories with sub-items</div>
                   </Button>
                 </div>
+                
+                {/* Structure Status */}
+                <div className="mt-4 p-3 bg-white rounded border text-sm">
+                  <p className="font-medium">Current Structure:</p>
+                  <p className="text-gray-600">
+                    {hasDirectSubItems && "📦 Direct Sub-Items"}
+                    {hasHierarchicalStructure && "🏛️ Hierarchical Structure"}
+                    {!hasDirectSubItems && !hasHierarchicalStructure && "No structure selected"}
+                  </p>
+                </div>
               </section>
 
               {/* Sub-categories */}
-              {subCategoryFields.length > 0 && (
+              {hasHierarchicalStructure && (
                 <section className="bg-gray-50 border rounded-lg p-6 shadow-sm">
                   <div className="flex items-center justify-between mb-6">
                     <div>
@@ -403,6 +482,7 @@ export function AddWorkItemDialog({
                               size="sm"
                               onClick={() => removeSubCategory(categoryIndex)}
                               className="shrink-0 mt-7"
+                              aria-label={`Remove category ${categoryIndex + 1}`}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -470,6 +550,7 @@ export function AddWorkItemDialog({
                                     form.setValue(`subCategories.${categoryIndex}.subItems`, newSubItems)
                                   }}
                                   className="shrink-0 mt-6"
+                                  aria-label={`Remove sub-item ${subItemIndex + 1} from category ${categoryIndex + 1}`}
                                 >
                                   <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
@@ -562,7 +643,7 @@ export function AddWorkItemDialog({
                                       const depth = Number(form.watch(`subCategories.${categoryIndex}.subItems.${subItemIndex}.depth`) || 0)
                                       return ((nos * length * breadth * depth) || 0).toFixed(3)
                                     })()}{" "}
-                                    m³
+                                    {unitSymbol}
                                   </p>
                                 </div>
                               </div>
@@ -576,7 +657,7 @@ export function AddWorkItemDialog({
               )}
 
               {/* Direct Sub-items */}
-              {subItemFields.length > 0 && (
+              {hasDirectSubItems && (
                 <section className="bg-gray-50 border rounded-lg p-6 shadow-sm">
                   <div className="flex items-center justify-between mb-6">
                     <div>
@@ -619,6 +700,7 @@ export function AddWorkItemDialog({
                               size="sm"
                               onClick={() => removeSubItem(index)}
                               className="shrink-0 mt-7"
+                              aria-label={`Remove sub-item ${index + 1}`}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -711,7 +793,7 @@ export function AddWorkItemDialog({
                                 (Number(watchedSubItems?.[index]?.breadth) || 0) *
                                 (Number(watchedSubItems?.[index]?.depth) || 0)
                               ).toFixed(3)}{" "}
-                              m³
+                              {unitSymbol}
                             </p>
                           </div>
                         </div>
@@ -721,21 +803,35 @@ export function AddWorkItemDialog({
                 </section>
               )}
 
-                {/* Summary */}
-                <div className="mt-6 bg-primary/5 border rounded-lg p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Total Quantity</p>
-                      <p className="text-2xl font-bold text-primary">{calculatedQuantity.toFixed(3)} m³</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Total Amount</p>
-                      <p className="text-2xl font-bold text-primary">
-                        ₹{calculatedAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
+              {/* Summary */}
+              <div className="mt-6 bg-primary/5 border rounded-lg p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Quantity</p>
+                    <p className="text-2xl font-bold text-primary">{calculatedQuantity.toFixed(3)} {unitSymbol}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Amount</p>
+                    <p className="text-2xl font-bold text-primary">
+                      ₹{calculatedAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    </p>
                   </div>
                 </div>
+                
+                {/* Validation Status */}
+                {!isFormValid && (
+                  <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded text-sm">
+                    <p className="text-amber-800 font-medium">⚠️ Form Requirements:</p>
+                    <ul className="text-amber-700 list-disc list-inside mt-1 space-y-1">
+                      {!form.watch("description").trim() && <li>Description is required</li>}
+                      {!form.watch("unitId") && <li>Unit must be selected</li>}
+                      {!form.watch("rate") && <li>Rate must be greater than 0</li>}
+                      {!hasDirectSubItems && !hasHierarchicalStructure && <li>Select a work item structure</li>}
+                      {calculatedQuantity <= 0 && <li>Total quantity must be greater than 0</li>}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Sticky Footer */}
@@ -749,7 +845,10 @@ export function AddWorkItemDialog({
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={form.formState.isSubmitting}>
+                <Button 
+                  type="submit" 
+                  disabled={form.formState.isSubmitting || !isFormValid}
+                >
                   {form.formState.isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Add Work Item
                 </Button>
