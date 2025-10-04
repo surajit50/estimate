@@ -70,7 +70,10 @@ export function AddWorkItemDialog({
     },
   })
 
-  const { fields, append, remove } = useFieldArray({ control: form.control, name: "subItems" })
+  const { fields, append, remove } = useFieldArray({ 
+    control: form.control, 
+    name: "subItems" 
+  })
 
   React.useEffect(() => {
     if (!open) {
@@ -319,18 +322,21 @@ export function AddWorkItemDialog({
                                   {...field} 
                                 />
                               </FormControl>
+                              <FormMessage />
                             </FormItem>
                           )}
                         />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => remove(index)}
-                          className="shrink-0 mt-7"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {fields.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => remove(index)}
+                            className="shrink-0 mt-7"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
                       </div>
                       
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -349,6 +355,7 @@ export function AddWorkItemDialog({
                                 onChange={field.onChange} 
                               />
                             </FormControl>
+                            <FormMessage />
                           </FormItem>
                         )} />
                         <FormField 
@@ -366,6 +373,7 @@ export function AddWorkItemDialog({
                                 onChange={field.onChange} 
                               />
                             </FormControl>
+                            <FormMessage />
                           </FormItem>
                         )} />
                         <FormField 
@@ -383,6 +391,7 @@ export function AddWorkItemDialog({
                                 onChange={field.onChange} 
                               />
                             </FormControl>
+                            <FormMessage />
                           </FormItem>
                         )} />
                         <FormField 
@@ -400,6 +409,7 @@ export function AddWorkItemDialog({
                                 onChange={field.onChange} 
                               />
                             </FormControl>
+                            <FormMessage />
                           </FormItem>
                         )} />
                         <div className="flex flex-col justify-end">
