@@ -2,13 +2,7 @@
 
 import * as React from "react"
 
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-} from "@/components/ui/command"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -70,19 +64,19 @@ export function AddWorkItemDialog({
     },
   })
 
-  const { fields, append, remove } = useFieldArray({ 
-    control: form.control, 
-    name: "subItems" 
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "subItems",
   })
 
   React.useEffect(() => {
     if (!open) {
-      form.reset({ 
-        pageRef: "", 
-        description: "", 
-        unitId: "", 
-        rate: 0, 
-        subItems: [{ description: "", nos: 1, length: 1, breadth: 1, depth: 1 }] 
+      form.reset({
+        pageRef: "",
+        description: "",
+        unitId: "",
+        rate: 0,
+        subItems: [{ description: "", nos: 1, length: 1, breadth: 1, depth: 1 }],
       })
     }
   }, [open, form])
@@ -93,7 +87,7 @@ export function AddWorkItemDialog({
 
   const calculatedQuantity = React.useMemo(() => {
     if (!watchedSubItems || watchedSubItems.length === 0) return 0
-    
+
     return watchedSubItems.reduce((sum: number, item: any) => {
       const nos = Number(item.nos) || 0
       const length = Number(item.length) || 0
@@ -147,12 +141,12 @@ export function AddWorkItemDialog({
       if (response.ok) {
         const newItem = await response.json()
         onAdd(newItem)
-        form.reset({ 
-          pageRef: "", 
-          description: "", 
-          unitId: "", 
-          rate: 0, 
-          subItems: [{ description: "", nos: 1, length: 1, breadth: 1, depth: 1 }] 
+        form.reset({
+          pageRef: "",
+          description: "",
+          unitId: "",
+          rate: 0,
+          subItems: [{ description: "", nos: 1, length: 1, breadth: 1, depth: 1 }],
         })
         onOpenChange(false)
       }
@@ -172,35 +166,30 @@ export function AddWorkItemDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form 
-            onSubmit={form.handleSubmit(onSubmit)} 
-            className="flex-1 flex flex-col min-h-0"
-          >
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
             {/* Scrollable Content Area */}
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
               {/* Rate Library */}
               <section className="bg-gray-50 border rounded-lg p-4 shadow-sm">
-                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                  📚 Rate Library
-                </h3>
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">📚 Rate Library</h3>
                 <Command className="rounded-lg border shadow-sm">
                   <CommandInput placeholder="Search rates..." className="h-10" />
-                  <CommandEmpty>No rates found.</CommandEmpty>
-                  <CommandGroup className="max-h-[160px] overflow-auto">
-                    {rates.map((rate) => (
-                      <CommandItem
-                        key={rate.id}
-                        value={rate.id}
-                        onSelect={() => handleRateSelect(rate.id)}
-                        className="flex justify-between items-center cursor-pointer hover:bg-primary/5 px-4 py-2"
-                      >
-                        <span className="truncate flex-1">{rate.description}</span>
-                        <span className="text-primary font-medium ml-2 shrink-0">
-                          ₹{rate.standardRate}
-                        </span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
+                  <CommandList>
+                    <CommandEmpty>No rates found.</CommandEmpty>
+                    <CommandGroup className="max-h-[160px] overflow-auto">
+                      {rates.map((rate) => (
+                        <CommandItem
+                          key={rate.id}
+                          value={rate.id}
+                          onSelect={() => handleRateSelect(rate.id)}
+                          className="flex justify-between items-center cursor-pointer hover:bg-primary/5 px-4 py-2"
+                        >
+                          <span className="truncate flex-1">{rate.description}</span>
+                          <span className="text-primary font-medium ml-2 shrink-0">₹{rate.standardRate}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
                 </Command>
               </section>
 
@@ -254,11 +243,11 @@ export function AddWorkItemDialog({
                     <FormItem className="mt-4">
                       <FormLabel>Item Description *</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          rows={3} 
-                          className="resize-none" 
-                          placeholder="Enter detailed work item description" 
-                          {...field} 
+                        <Textarea
+                          rows={3}
+                          className="resize-none"
+                          placeholder="Enter detailed work item description"
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
@@ -273,12 +262,12 @@ export function AddWorkItemDialog({
                     <FormItem className="mt-4">
                       <FormLabel>Rate (₹) *</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          step="0.01" 
-                          placeholder="Enter rate" 
-                          value={field.value ?? ""} 
-                          onChange={field.onChange} 
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="Enter rate"
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
                         />
                       </FormControl>
                       <FormMessage />
@@ -296,9 +285,9 @@ export function AddWorkItemDialog({
                       Add sub-items to calculate total quantity. Each sub-item requires dimensions.
                     </p>
                   </div>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => append({ description: "", nos: 1, length: 1, breadth: 1, depth: 1 })}
                   >
                     <Plus className="h-4 w-4 mr-2" />
@@ -317,10 +306,7 @@ export function AddWorkItemDialog({
                             <FormItem className="flex-1">
                               <FormLabel className="text-sm font-medium">Sub-item Description</FormLabel>
                               <FormControl>
-                                <Input 
-                                  placeholder="Describe this part of the work..." 
-                                  {...field} 
-                                />
+                                <Input placeholder="Describe this part of the work..." {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -338,80 +324,84 @@ export function AddWorkItemDialog({
                           </Button>
                         )}
                       </div>
-                      
+
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                        <FormField 
-                          control={form.control} 
-                          name={`subItems.${index}.nos` as const} 
+                        <FormField
+                          control={form.control}
+                          name={`subItems.${index}.nos` as const}
                           render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Quantity (Nos)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="Nos" 
-                                value={field.value ?? ""} 
-                                onChange={field.onChange} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField 
-                          control={form.control} 
-                          name={`subItems.${index}.length` as const} 
+                            <FormItem>
+                              <FormLabel className="text-xs">Quantity (Nos)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Nos"
+                                  value={field.value ?? ""}
+                                  onChange={field.onChange}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`subItems.${index}.length` as const}
                           render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Length (m)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="Length" 
-                                value={field.value ?? ""} 
-                                onChange={field.onChange} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField 
-                          control={form.control} 
-                          name={`subItems.${index}.breadth` as const} 
+                            <FormItem>
+                              <FormLabel className="text-xs">Length (m)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Length"
+                                  value={field.value ?? ""}
+                                  onChange={field.onChange}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`subItems.${index}.breadth` as const}
                           render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Breadth (m)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="Breadth" 
-                                value={field.value ?? ""} 
-                                onChange={field.onChange} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField 
-                          control={form.control} 
-                          name={`subItems.${index}.depth` as const} 
+                            <FormItem>
+                              <FormLabel className="text-xs">Breadth (m)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Breadth"
+                                  value={field.value ?? ""}
+                                  onChange={field.onChange}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`subItems.${index}.depth` as const}
                           render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Depth (m)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="Depth" 
-                                value={field.value ?? ""} 
-                                onChange={field.onChange} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
+                            <FormItem>
+                              <FormLabel className="text-xs">Depth (m)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Depth"
+                                  value={field.value ?? ""}
+                                  onChange={field.onChange}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                         <div className="flex flex-col justify-end">
                           <FormLabel className="text-xs">Sub-total</FormLabel>
                           <p className="text-sm font-medium text-primary py-2">
@@ -420,7 +410,8 @@ export function AddWorkItemDialog({
                               (Number(watchedSubItems?.[index]?.length) || 0) *
                               (Number(watchedSubItems?.[index]?.breadth) || 0) *
                               (Number(watchedSubItems?.[index]?.depth) || 0)
-                            ).toFixed(3)} m³
+                            ).toFixed(3)}{" "}
+                            m³
                           </p>
                         </div>
                       </div>
@@ -449,10 +440,10 @@ export function AddWorkItemDialog({
             {/* Sticky Footer */}
             <DialogFooter className="border-t bg-white px-6 py-4 shrink-0">
               <div className="flex w-full justify-end gap-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => onOpenChange(false)} 
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
                   disabled={form.formState.isSubmitting}
                 >
                   Cancel
