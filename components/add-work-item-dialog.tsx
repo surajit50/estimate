@@ -36,10 +36,10 @@ interface Rate {
 
 interface SubItemFormValues {
   description: string
-  nos: number
-  length: number
-  breadth: number
-  depth: number
+  nos: number | string
+  length: number | string
+  breadth: number | string
+  depth: number | string
 }
 
 interface SubCategoryFormValues {
@@ -58,7 +58,7 @@ interface AddWorkItemDialogProps {
   nextItemNo: number
 }
 
-export function AddWorkItemDialog({
+export default function AddWorkItemDialog({
   open,
   onOpenChange,
   onAdd,
@@ -89,20 +89,18 @@ export function AddWorkItemDialog({
     name: "subCategories",
   })
 
-  // Watch ALL form values for real-time updates
-  const watchedValues = form.watch();
-  
-  // Extract watched values with proper fallbacks
-  const watchedRate = Number(watchedValues.rate) || 0;
-  const watchedSubItems = watchedValues.subItems || [];
-  const watchedSubCategories = watchedValues.subCategories || [];
-  const selectedUnitId = watchedValues.unitId;
+  // Watch specific keys for reliable reactivity
+  const watchedSubItems = form.watch("subItems") || []
+  const watchedSubCategories = form.watch("subCategories") || []
+  const watchedRate = Number(form.watch("rate") ?? 0)
+  const selectedUnitId = form.watch("unitId")
 
-  const selectedUnit = units.find((u) => u.id === selectedUnitId);
-  const unitSymbol = selectedUnit?.unitSymbol || "m³";
+  const selectedUnit = units.find((u) => u.id === selectedUnitId)
+  const unitSymbol = selectedUnit?.unitSymbol || "m³"
 
-  const hasDirectSubItems = subItemFields.length > 0;
-  const hasHierarchicalStructure = subCategoryFields.length > 0;
+  // Derived UI flags (from field arrays)
+  const hasDirectSubItems = subItemFields.length > 0
+  const hasHierarchicalStructure = subCategoryFields.length > 0
 
   // Reset form when dialog closes
   React.useEffect(() => {
@@ -118,145 +116,139 @@ export function AddWorkItemDialog({
     }
   }, [open, form])
 
+  // Robust parse helper: treat empty/undefined as fallback (so partial inputs don't zero everything)
+  const parseNumber = React.useCallback((value: any, fallback = 1) => {
+    if (value === undefined || value === null || value === "") return fallback
+    const n = Number(value)
+    return Number.isFinite(n) ? n : fallback
+  }, [])
+
   // Optimized calculation function
   const calculateSubItemQuantity = React.useCallback((subItem: any): number => {
-    if (!subItem) return 0;
-    
-    const nos = Number(subItem.nos) || 0;
-    const length = Number(subItem.length) || 0;
-    const breadth = Number(subItem.breadth) || 0;
-    const depth = Number(subItem.depth) || 0;
-    
-    return nos * length * breadth * depth;
-  }, []);
+    if (!subItem) return 0
 
-  // Real-time calculated quantity - FIXED with proper dependency tracking
+    // nos default to 1 if missing (so e.g., a single length entry still counts)
+    const nos = parseNumber(subItem.nos, 1)
+    const length = parseNumber(subItem.length, 1)
+    const breadth = parseNumber(subItem.breadth, 1)
+    const depth = parseNumber(subItem.depth, 1)
+
+    return nos * length * breadth * depth
+  }, [parseNumber])
+
+  // Real-time calculated quantity
   const calculatedQuantity = React.useMemo(() => {
-    let totalQuantity = 0;
+    let totalQuantity = 0
 
-    // Calculate from direct sub-items
-    if (watchedSubItems && Array.isArray(watchedSubItems)) {
+    // Calculate from direct sub-items (watched values)
+    if (Array.isArray(watchedSubItems)) {
       watchedSubItems.forEach((item: any) => {
-        totalQuantity += calculateSubItemQuantity(item);
-      });
+        totalQuantity += calculateSubItemQuantity(item)
+      })
     }
 
     // Calculate from sub-categories
-    if (watchedSubCategories && Array.isArray(watchedSubCategories)) {
+    if (Array.isArray(watchedSubCategories)) {
       watchedSubCategories.forEach((category: any) => {
         if (category?.subItems && Array.isArray(category.subItems)) {
           category.subItems.forEach((subItem: any) => {
-            totalQuantity += calculateSubItemQuantity(subItem);
-          });
+            totalQuantity += calculateSubItemQuantity(subItem)
+          })
         }
-      });
+      })
     }
 
-    return totalQuantity;
-  }, [watchedSubItems, watchedSubCategories, calculateSubItemQuantity]);
+    return totalQuantity
+  }, [watchedSubItems, watchedSubCategories, calculateSubItemQuantity])
 
-  // Real-time calculated amount - FIXED
+  // Real-time calculated amount
   const calculatedAmount = React.useMemo(() => {
-    return calculatedQuantity * watchedRate;
-  }, [calculatedQuantity, watchedRate]);
+    return calculatedQuantity * watchedRate
+  }, [calculatedQuantity, watchedRate])
 
-  // Get individual sub-item quantity for display
+  // Get individual sub-item quantity for display (handles undefined safely)
   const getSubItemQuantity = React.useCallback((subItem: any): number => {
-    return calculateSubItemQuantity(subItem);
-  }, [calculateSubItemQuantity]);
+    return calculateSubItemQuantity(subItem)
+  }, [calculateSubItemQuantity])
 
   // Rate selection handler
   const handleRateSelect = (rateId: string) => {
-    const selectedRate = rates.find((r) => r.id === rateId);
+    const selectedRate = rates.find((r) => r.id === rateId)
     if (selectedRate) {
-      form.setValue("description", selectedRate.description);
-      form.setValue("unitId", selectedRate.unitId);
-      form.setValue("rate", Number(selectedRate.standardRate));
+      form.setValue("description", selectedRate.description)
+      form.setValue("unitId", selectedRate.unitId)
+      form.setValue("rate", Number(selectedRate.standardRate))
     }
-  };
+  }
 
   // Structure selection handlers
   const handleSelectDirectSubItems = () => {
-    form.setValue("subCategories", []);
+    form.setValue("subCategories", [], { shouldValidate: true, shouldDirty: true })
     if (subItemFields.length === 0) {
-      appendSubItem({ description: "", nos: 1, length: 1, breadth: 1, depth: 1 });
+      appendSubItem({ description: "", nos: 1, length: 1, breadth: 1, depth: 1 })
     }
-  };
+  }
 
   const handleSelectHierarchicalStructure = () => {
-    form.setValue("subItems", []);
+    form.setValue("subItems", [], { shouldValidate: true, shouldDirty: true })
     if (subCategoryFields.length === 0) {
-      appendSubCategory({ 
-        categoryName: "", 
-        description: "", 
-        subItems: [{ description: "", nos: 1, length: 1, breadth: 1, depth: 1 }] 
-      });
+      appendSubCategory({
+        categoryName: "",
+        description: "",
+        subItems: [{ description: "", nos: 1, length: 1, breadth: 1, depth: 1 }],
+      })
     }
-  };
+  }
 
-  // Add sub-item to a category
+  // Add sub-item to a category (use setValue with options so watchers fire)
   const addSubItemToCategory = (categoryIndex: number) => {
-    const currentSubItems = form.getValues(`subCategories.${categoryIndex}.subItems`) || [];
-    form.setValue(`subCategories.${categoryIndex}.subItems`, [
+    const currentSubItems = form.getValues(`subCategories.${categoryIndex}.subItems`) || []
+    const newSubItems = [
       ...currentSubItems,
-      { description: "", nos: 1, length: 1, breadth: 1, depth: 1 }
-    ]);
-  };
+      { description: "", nos: 1, length: 1, breadth: 1, depth: 1 },
+    ]
+    form.setValue(`subCategories.${categoryIndex}.subItems`, newSubItems, { shouldValidate: true, shouldDirty: true })
+  }
 
   // Remove sub-item from a category
   const removeSubItemFromCategory = (categoryIndex: number, subItemIndex: number) => {
-    const currentSubItems = form.getValues(`subCategories.${categoryIndex}.subItems`) || [];
-    const newSubItems = currentSubItems.filter((_: any, idx: number) => idx !== subItemIndex);
-    form.setValue(`subCategories.${categoryIndex}.subItems`, newSubItems);
-  };
+    const currentSubItems = form.getValues(`subCategories.${categoryIndex}.subItems`) || []
+    const newSubItems = currentSubItems.filter((_: any, idx: number) => idx !== subItemIndex)
+    form.setValue(`subCategories.${categoryIndex}.subItems`, newSubItems, { shouldValidate: true, shouldDirty: true })
+  }
 
   // Form validation state
   const isFormValid = React.useMemo(() => {
-    const hasStructure = hasDirectSubItems || hasHierarchicalStructure;
-    const hasPositiveQuantity = calculatedQuantity > 0;
-    const hasDescription = watchedValues.description?.trim().length > 0;
-    const hasUnit = watchedValues.unitId?.length > 0;
-    const hasRate = watchedRate > 0;
+    const hasStructure = (Array.isArray(watchedSubItems) && watchedSubItems.length > 0) ||
+      (Array.isArray(watchedSubCategories) && watchedSubCategories.some((c: any) => Array.isArray(c.subItems) && c.subItems.length > 0))
+    const hasPositiveQuantity = calculatedQuantity > 0
+    const hasDescription = (form.getValues("description") || "").toString().trim().length > 0
+    const hasUnit = (form.getValues("unitId") || "").toString().length > 0
+    const hasRateFlag = watchedRate > 0
 
-    return hasStructure && hasPositiveQuantity && hasDescription && hasUnit && hasRate;
-  }, [
-    hasDirectSubItems, 
-    hasHierarchicalStructure, 
-    calculatedQuantity,
-    watchedValues.description,
-    watchedValues.unitId,
-    watchedRate
-  ]);
+    return hasStructure && hasPositiveQuantity && hasDescription && hasUnit && hasRateFlag
+  }, [watchedSubItems, watchedSubCategories, calculatedQuantity, watchedRate, form])
 
   // Submit handler
   const onSubmit = async (values: WorkItemFormValues) => {
     try {
-      const response = await fetch("/api/work-items", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          estimateId,
-          itemNo: nextItemNo,
-          pageRef: values.pageRef || null,
-          description: values.description,
-          unitId: values.unitId,
-          rate: values.rate,
-          quantity: calculatedQuantity,
-          amount: calculatedAmount,
-          subCategories: (values.subCategories || []).map((category) => ({
-            categoryName: category.categoryName,
-            description: category.description,
-            subItems: category.subItems.map((item) => ({
-              description: item.description,
-              nos: item.nos,
-              length: item.length,
-              breadth: item.breadth,
-              depth: item.depth,
-              quantity: calculateSubItemQuantity(item),
-              unitSymbol: selectedUnit?.unitSymbol || "",
-            })),
-          })),
-          subItems: (values.subItems || []).map((item) => ({
+      // Recalculate quantities from current watched values to be safe
+      const finalQuantity = calculatedQuantity
+      const finalAmount = calculatedAmount
+
+      const payload = {
+        estimateId,
+        itemNo: nextItemNo,
+        pageRef: values.pageRef || null,
+        description: values.description,
+        unitId: values.unitId,
+        rate: values.rate,
+        quantity: finalQuantity,
+        amount: finalAmount,
+        subCategories: (values.subCategories || []).map((category) => ({
+          categoryName: category.categoryName,
+          description: category.description,
+          subItems: (category.subItems || []).map((item) => ({
             description: item.description,
             nos: item.nos,
             length: item.length,
@@ -265,21 +257,36 @@ export function AddWorkItemDialog({
             quantity: calculateSubItemQuantity(item),
             unitSymbol: selectedUnit?.unitSymbol || "",
           })),
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to create work item' }));
-        throw new Error(errorData.message || 'Failed to create work item');
+        })),
+        subItems: (values.subItems || []).map((item) => ({
+          description: item.description,
+          nos: item.nos,
+          length: item.length,
+          breadth: item.breadth,
+          depth: item.depth,
+          quantity: calculateSubItemQuantity(item),
+          unitSymbol: selectedUnit?.unitSymbol || "",
+        })),
       }
 
-      const newItem = await response.json();
-      onAdd(newItem);
-      onOpenChange(false);
+      const response = await fetch("/api/work-items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Failed to create work item" }))
+        throw new Error(errorData.message || "Failed to create work item")
+      }
+
+      const newItem = await response.json()
+      onAdd(newItem)
+      onOpenChange(false)
     } catch (error) {
-      console.error("Error adding work item:", error);
+      console.error("Error adding work item:", error)
     }
-  };
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -394,8 +401,8 @@ export function AddWorkItemDialog({
                           placeholder="Enter rate"
                           value={field.value ?? ""}
                           onChange={(e) => {
-                            const value = e.target.value === "" ? 0 : Number(e.target.value);
-                            field.onChange(value);
+                            const value = e.target.value === "" ? 0 : Number(e.target.value)
+                            field.onChange(value)
                           }}
                         />
                       </FormControl>
@@ -430,7 +437,7 @@ export function AddWorkItemDialog({
                     <div className="text-xs text-gray-600">Categories with sub-items</div>
                   </Button>
                 </div>
-                
+
                 {/* Structure Status */}
                 <div className="mt-4 p-3 bg-white rounded border text-sm">
                   <p className="font-medium">Current Structure:</p>
@@ -455,11 +462,13 @@ export function AddWorkItemDialog({
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => appendSubCategory({ 
-                        categoryName: "", 
-                        description: "", 
-                        subItems: [{ description: "", nos: 1, length: 1, breadth: 1, depth: 1 }] 
-                      })}
+                      onClick={() =>
+                        appendSubCategory({
+                          categoryName: "",
+                          description: "",
+                          subItems: [{ description: "", nos: 1, length: 1, breadth: 1, depth: 1 }],
+                        })
+                      }
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add Category
@@ -468,8 +477,8 @@ export function AddWorkItemDialog({
 
                   <div className="space-y-6">
                     {subCategoryFields.map((category, categoryIndex) => {
-                      const categorySubItems = watchedSubCategories[categoryIndex]?.subItems || [];
-                      
+                      const categorySubItems = (watchedSubCategories[categoryIndex]?.subItems) || []
+
                       return (
                         <div key={category.id} className="p-4 bg-white rounded-lg border shadow-sm">
                           <div className="flex items-start gap-2 mb-4">
@@ -571,8 +580,8 @@ export function AddWorkItemDialog({
                                             placeholder="Nos"
                                             value={field.value ?? ""}
                                             onChange={(e) => {
-                                              const value = e.target.value === "" ? 0 : Number(e.target.value);
-                                              field.onChange(value);
+                                              const value = e.target.value === "" ? "" : Number(e.target.value)
+                                              field.onChange(value)
                                             }}
                                           />
                                         </FormControl>
@@ -593,8 +602,8 @@ export function AddWorkItemDialog({
                                             placeholder="Length"
                                             value={field.value ?? ""}
                                             onChange={(e) => {
-                                              const value = e.target.value === "" ? 0 : Number(e.target.value);
-                                              field.onChange(value);
+                                              const value = e.target.value === "" ? "" : Number(e.target.value)
+                                              field.onChange(value)
                                             }}
                                           />
                                         </FormControl>
@@ -615,8 +624,8 @@ export function AddWorkItemDialog({
                                             placeholder="Breadth"
                                             value={field.value ?? ""}
                                             onChange={(e) => {
-                                              const value = e.target.value === "" ? 0 : Number(e.target.value);
-                                              field.onChange(value);
+                                              const value = e.target.value === "" ? "" : Number(e.target.value)
+                                              field.onChange(value)
                                             }}
                                           />
                                         </FormControl>
@@ -637,8 +646,8 @@ export function AddWorkItemDialog({
                                             placeholder="Depth"
                                             value={field.value ?? ""}
                                             onChange={(e) => {
-                                              const value = e.target.value === "" ? 0 : Number(e.target.value);
-                                              field.onChange(value);
+                                              const value = e.target.value === "" ? "" : Number(e.target.value)
+                                              field.onChange(value)
                                             }}
                                           />
                                         </FormControl>
@@ -657,7 +666,7 @@ export function AddWorkItemDialog({
                             ))}
                           </div>
                         </div>
-                      );
+                      )
                     })}
                   </div>
                 </section>
@@ -685,8 +694,8 @@ export function AddWorkItemDialog({
 
                   <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
                     {subItemFields.map((item, index) => {
-                      const subItem = watchedSubItems[index];
-                      
+                      const subItem = watchedSubItems[index]
+
                       return (
                         <div key={item.id} className="p-4 bg-white rounded-lg border shadow-sm space-y-4">
                           <div className="flex items-start gap-2">
@@ -731,8 +740,8 @@ export function AddWorkItemDialog({
                                       placeholder="Nos"
                                       value={field.value ?? ""}
                                       onChange={(e) => {
-                                        const value = e.target.value === "" ? 0 : Number(e.target.value);
-                                        field.onChange(value);
+                                        const value = e.target.value === "" ? "" : Number(e.target.value)
+                                        field.onChange(value)
                                       }}
                                     />
                                   </FormControl>
@@ -753,8 +762,8 @@ export function AddWorkItemDialog({
                                       placeholder="Length"
                                       value={field.value ?? ""}
                                       onChange={(e) => {
-                                        const value = e.target.value === "" ? 0 : Number(e.target.value);
-                                        field.onChange(value);
+                                        const value = e.target.value === "" ? "" : Number(e.target.value)
+                                        field.onChange(value)
                                       }}
                                     />
                                   </FormControl>
@@ -775,8 +784,8 @@ export function AddWorkItemDialog({
                                       placeholder="Breadth"
                                       value={field.value ?? ""}
                                       onChange={(e) => {
-                                        const value = e.target.value === "" ? 0 : Number(e.target.value);
-                                        field.onChange(value);
+                                        const value = e.target.value === "" ? "" : Number(e.target.value)
+                                        field.onChange(value)
                                       }}
                                     />
                                   </FormControl>
@@ -797,8 +806,8 @@ export function AddWorkItemDialog({
                                       placeholder="Depth"
                                       value={field.value ?? ""}
                                       onChange={(e) => {
-                                        const value = e.target.value === "" ? 0 : Number(e.target.value);
-                                        field.onChange(value);
+                                        const value = e.target.value === "" ? "" : Number(e.target.value)
+                                        field.onChange(value)
                                       }}
                                     />
                                   </FormControl>
@@ -814,7 +823,7 @@ export function AddWorkItemDialog({
                             </div>
                           </div>
                         </div>
-                      );
+                      )
                     })}
                   </div>
                 </section>
@@ -832,21 +841,21 @@ export function AddWorkItemDialog({
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Amount</p>
                     <p className="text-2xl font-bold text-primary">
-                      ₹{calculatedAmount.toLocaleString("en-IN", { 
-                        minimumFractionDigits: 2, 
-                        maximumFractionDigits: 2 
+                      ₹{calculatedAmount.toLocaleString("en-IN", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
                       })}
                     </p>
                   </div>
                 </div>
-                
+
                 {/* Validation Status */}
                 {!isFormValid && (
                   <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded text-sm">
                     <p className="text-amber-800 font-medium">⚠️ Form Requirements:</p>
                     <ul className="text-amber-700 list-disc list-inside mt-1 space-y-1">
-                      {!watchedValues.description?.trim() && <li>Description is required</li>}
-                      {!watchedValues.unitId && <li>Unit must be selected</li>}
+                      {!form.getValues("description")?.toString().trim() && <li>Description is required</li>}
+                      {!form.getValues("unitId") && <li>Unit must be selected</li>}
                       {watchedRate <= 0 && <li>Rate must be greater than 0</li>}
                       {!hasDirectSubItems && !hasHierarchicalStructure && <li>Select a work item structure</li>}
                       {calculatedQuantity <= 0 && <li>Total quantity must be greater than 0</li>}
@@ -867,8 +876,8 @@ export function AddWorkItemDialog({
                 >
                   Cancel
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={form.formState.isSubmitting || !isFormValid}
                 >
                   {form.formState.isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
