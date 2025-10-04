@@ -40,14 +40,6 @@ interface Rate {
   standardRate: number
 }
 
-interface SubItem {
-  description: string
-  nos: string
-  length: string
-  breadth: string
-  depth: string
-}
-
 interface AddWorkItemDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -74,10 +66,7 @@ export function AddWorkItemDialog({
       description: "",
       unitId: "",
       rate: 0,
-      length: 1,
-      width: 1,
-      height: 1,
-      subItems: [],
+      subItems: [{ description: "", nos: 1, length: 1, breadth: 1, depth: 1 }],
     },
   })
 
@@ -85,32 +74,31 @@ export function AddWorkItemDialog({
 
   React.useEffect(() => {
     if (!open) {
-      form.reset({ pageRef: "", description: "", unitId: "", rate: 0, length: 1, width: 1, height: 1, subItems: [] })
+      form.reset({ 
+        pageRef: "", 
+        description: "", 
+        unitId: "", 
+        rate: 0, 
+        subItems: [{ description: "", nos: 1, length: 1, breadth: 1, depth: 1 }] 
+      })
     }
   }, [open, form])
 
   const watch = form.watch
-  const watchedLength = watch("length")
-  const watchedWidth = watch("width")
-  const watchedHeight = watch("height")
   const watchedRate = watch("rate")
   const watchedSubItems = watch("subItems")
 
   const calculatedQuantity = React.useMemo(() => {
-    if (watchedSubItems && watchedSubItems.length > 0) {
-      return watchedSubItems.reduce((sum: number, item: any) => {
-        const nos = Number(item.nos) || 0
-        const length = Number(item.length) || 0
-        const breadth = Number(item.breadth) || 0
-        const depth = Number(item.depth) || 0
-        return sum + nos * length * breadth * depth
-      }, 0)
-    }
-    const l = Number(watchedLength) || 0
-    const w = Number(watchedWidth) || 0
-    const h = Number(watchedHeight) || 0
-    return l * w * h
-  }, [watchedSubItems, watchedLength, watchedWidth, watchedHeight])
+    if (!watchedSubItems || watchedSubItems.length === 0) return 0
+    
+    return watchedSubItems.reduce((sum: number, item: any) => {
+      const nos = Number(item.nos) || 0
+      const length = Number(item.length) || 0
+      const breadth = Number(item.breadth) || 0
+      const depth = Number(item.depth) || 0
+      return sum + nos * length * breadth * depth
+    }, 0)
+  }, [watchedSubItems])
 
   const calculatedAmount = React.useMemo(() => {
     const r = Number(watchedRate) || 0
@@ -139,9 +127,6 @@ export function AddWorkItemDialog({
           description: values.description,
           unitId: values.unitId,
           rate: values.rate,
-          length: values.length,
-          width: values.width,
-          height: values.height,
           quantity: calculatedQuantity,
           amount: calculatedAmount,
           subItems: (values.subItems || []).map((item) => ({
@@ -159,7 +144,13 @@ export function AddWorkItemDialog({
       if (response.ok) {
         const newItem = await response.json()
         onAdd(newItem)
-        form.reset({ pageRef: "", description: "", unitId: "", rate: 0, length: 1, width: 1, height: 1, subItems: [] })
+        form.reset({ 
+          pageRef: "", 
+          description: "", 
+          unitId: "", 
+          rate: 0, 
+          subItems: [{ description: "", nos: 1, length: 1, breadth: 1, depth: 1 }] 
+        })
         onOpenChange(false)
       }
     } catch (error) {
@@ -173,7 +164,7 @@ export function AddWorkItemDialog({
         <DialogHeader className="border-b bg-white px-6 py-4 shrink-0">
           <DialogTitle className="text-2xl font-bold">➕ Add Work Item</DialogTitle>
           <DialogDescription className="text-gray-600">
-            Create a new work item with dimensions or sub-item breakdown.
+            Create a new work item with sub-item breakdown for accurate quantity calculation.
           </DialogDescription>
         </DialogHeader>
 
@@ -293,10 +284,15 @@ export function AddWorkItemDialog({
                 />
               </section>
 
-              {/* Sub-items */}
+              {/* Sub-items - Now the main way to define quantity */}
               <section className="bg-gray-50 border rounded-lg p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold">📦 Sub-Items Breakdown</h3>
+                  <div>
+                    <h3 className="text-lg font-semibold">📦 Quantity Calculation</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Add sub-items to calculate total quantity. Each sub-item requires dimensions.
+                    </p>
+                  </div>
                   <Button 
                     type="button" 
                     variant="outline" 
@@ -307,167 +303,127 @@ export function AddWorkItemDialog({
                   </Button>
                 </div>
 
-                {fields.length > 0 ? (
-                  <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
-                    {fields.map((item, index) => (
-                      <div key={item.id} className="p-4 bg-white rounded-lg border shadow-sm space-y-4">
-                        <div className="flex items-start gap-2">
-                          <FormField
-                            control={form.control}
-                            name={`subItems.${index}.description` as const}
-                            render={({ field }) => (
-                              <FormItem className="flex-1">
-                                <FormControl>
-                                  <Input placeholder="Sub-item description" {...field} />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => remove(index)}
-                            className="shrink-0"
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                          <FormField 
-                            control={form.control} 
-                            name={`subItems.${index}.nos` as const} 
-                            render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">Nos</FormLabel>
+                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                  {fields.map((item, index) => (
+                    <div key={item.id} className="p-4 bg-white rounded-lg border shadow-sm space-y-4">
+                      <div className="flex items-start gap-2">
+                        <FormField
+                          control={form.control}
+                          name={`subItems.${index}.description` as const}
+                          render={({ field }) => (
+                            <FormItem className="flex-1">
+                              <FormLabel className="text-sm font-medium">Sub-item Description</FormLabel>
                               <FormControl>
                                 <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="Nos" 
-                                  value={field.value ?? ""} 
-                                  onChange={field.onChange} 
+                                  placeholder="Describe this part of the work..." 
+                                  {...field} 
                                 />
                               </FormControl>
                             </FormItem>
-                          )} />
-                          <FormField 
-                            control={form.control} 
-                            name={`subItems.${index}.length` as const} 
-                            render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">Length</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="Length" 
-                                  value={field.value ?? ""} 
-                                  onChange={field.onChange} 
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )} />
-                          <FormField 
-                            control={form.control} 
-                            name={`subItems.${index}.breadth` as const} 
-                            render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">Breadth</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="Breadth" 
-                                  value={field.value ?? ""} 
-                                  onChange={field.onChange} 
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )} />
-                          <FormField 
-                            control={form.control} 
-                            name={`subItems.${index}.depth` as const} 
-                            render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">Depth</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="Depth" 
-                                  value={field.value ?? ""} 
-                                  onChange={field.onChange} 
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )} />
-                        </div>
-                        <p className="text-xs text-muted-foreground font-medium">
-                          Quantity:{" "}
-                          {(
-                            (Number(watchedSubItems?.[index]?.nos) || 0) *
-                            (Number(watchedSubItems?.[index]?.length) || 0) *
-                            (Number(watchedSubItems?.[index]?.breadth) || 0) *
-                            (Number(watchedSubItems?.[index]?.depth) || 0)
-                          ).toFixed(3)}
-                        </p>
+                          )}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => remove(index)}
+                          className="shrink-0 mt-7"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormField control={form.control} name="length" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Length *</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            value={field.value ?? ""} 
-                            onChange={field.onChange} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="width" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Width *</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            value={field.value ?? ""} 
-                            onChange={field.onChange} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="height" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Height/Depth *</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            value={field.value ?? ""} 
-                            onChange={field.onChange} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  </div>
-                )}
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        <FormField 
+                          control={form.control} 
+                          name={`subItems.${index}.nos` as const} 
+                          render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Quantity (Nos)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01" 
+                                placeholder="Nos" 
+                                value={field.value ?? ""} 
+                                onChange={field.onChange} 
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )} />
+                        <FormField 
+                          control={form.control} 
+                          name={`subItems.${index}.length` as const} 
+                          render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Length (m)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01" 
+                                placeholder="Length" 
+                                value={field.value ?? ""} 
+                                onChange={field.onChange} 
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )} />
+                        <FormField 
+                          control={form.control} 
+                          name={`subItems.${index}.breadth` as const} 
+                          render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Breadth (m)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01" 
+                                placeholder="Breadth" 
+                                value={field.value ?? ""} 
+                                onChange={field.onChange} 
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )} />
+                        <FormField 
+                          control={form.control} 
+                          name={`subItems.${index}.depth` as const} 
+                          render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Depth (m)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01" 
+                                placeholder="Depth" 
+                                value={field.value ?? ""} 
+                                onChange={field.onChange} 
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )} />
+                        <div className="flex flex-col justify-end">
+                          <FormLabel className="text-xs">Sub-total</FormLabel>
+                          <p className="text-sm font-medium text-primary py-2">
+                            {(
+                              (Number(watchedSubItems?.[index]?.nos) || 0) *
+                              (Number(watchedSubItems?.[index]?.length) || 0) *
+                              (Number(watchedSubItems?.[index]?.breadth) || 0) *
+                              (Number(watchedSubItems?.[index]?.depth) || 0)
+                            ).toFixed(3)} m³
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
                 {/* Summary */}
                 <div className="mt-6 bg-primary/5 border rounded-lg p-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Total Quantity</p>
-                      <p className="text-2xl font-bold text-primary">{calculatedQuantity.toFixed(3)}</p>
+                      <p className="text-2xl font-bold text-primary">{calculatedQuantity.toFixed(3)} m³</p>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-600">Total Amount</p>
