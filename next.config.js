@@ -1,7 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  serverExternalPackages: ['xlsx', 'jspdf', 'jspdf-autotable'],
   experimental: {
-    serverComponentsExternalPackages: ['xlsx', 'jspdf', 'jspdf-autotable'],
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
   },
   webpack: (config, { isServer }) => {
     // Handle node modules that need to be externalized
@@ -23,14 +26,7 @@ const nextConfig = {
     return config
   },
   // Optimize for production
-  swcMinify: true,
   compress: true,
-  // Handle large payloads
-  experimental: {
-    serverActions: {
-      bodySizeLimit: '2mb',
-    },
-  },
   // Security headers
   async headers() {
     return [
