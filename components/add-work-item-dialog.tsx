@@ -71,16 +71,14 @@ export default function AddWorkItemDialog({
   const {
     fields: subItemFields,
     append: appendSubItem,
-    remove: removeSubItem,
   } = useFieldArray({ control: form.control, name: "subItems" })
 
   const {
     fields: categoryFields,
     append: appendCategory,
-    remove: removeCategory,
   } = useFieldArray({ control: form.control, name: "subCategories" })
 
-  // unit-aware quantity calculation
+  // unit-aware quantity calculation (includes nos factor where appropriate)
   const calculateQuantity = (item: any, unitSymbol: string) => {
     const l = Number(item.length) || 0
     const b = Number(item.breadth) || 0
@@ -91,17 +89,20 @@ export default function AddWorkItemDialog({
       case "nos":
         return n
       case "m":
-        return l
+        return n * l
       case "m2":
-        return l * b
+        return n * l * b
       case "m3":
-        return l * b * d
+        return n * l * b * d
       case "kg":
       case "bag":
       case "mt":
-        return n > 0 ? n : l * b * d
-      default:
-        return n || (l * b * d)
+        return n
+      default: {
+        const hasAnyDim = l > 0 || b > 0 || d > 0
+        const dims = (l || 1) * (b || 1) * (d || 1)
+        return hasAnyDim ? (n > 0 ? n * dims : dims) : n
+      }
     }
   }
 
@@ -236,7 +237,6 @@ export default function AddWorkItemDialog({
                       <Input type="number" placeholder="Length" {...form.register(`subItems.${index}.length`)} />
                       <Input type="number" placeholder="Breadth" {...form.register(`subItems.${index}.breadth`)} />
                       <Input type="number" placeholder="Depth" {...form.register(`subItems.${index}.depth`)} />
-                      <Button type="button" onClick={() => removeSubItem(index)}>Remove</Button>
                     </div>
                   ))}
                   <Button type="button" variant="outline" size="sm" onClick={() => appendSubItem({ name: "", nos: 0, length: 0, breadth: 0, depth: 0 })}><PlusCircle className="mr-2 h-4 w-4" /> Add Sub Item</Button>
@@ -248,7 +248,7 @@ export default function AddWorkItemDialog({
               <div>
                 <Label>Sub Categories</Label>
                 {categoryFields.map((cat, catIndex) => {
-                  const { fields: catSubItems, append: appendCatSubItem, remove: removeCatSubItem } = useFieldArray({ control: form.control, name: `subCategories.${catIndex}.subItems` })
+                  const { fields: catSubItems, append: appendCatSubItem } = useFieldArray({ control: form.control, name: `subCategories.${catIndex}.subItems` })
                   return (
                     <div key={cat.id} className="border p-2 mb-2">
                       <Input placeholder="Category Name" {...form.register(`subCategories.${catIndex}.name`)} />
@@ -259,11 +259,9 @@ export default function AddWorkItemDialog({
                           <Input type="number" placeholder="Length" {...form.register(`subCategories.${catIndex}.subItems.${siIndex}.length`)} />
                           <Input type="number" placeholder="Breadth" {...form.register(`subCategories.${catIndex}.subItems.${siIndex}.breadth`)} />
                           <Input type="number" placeholder="Depth" {...form.register(`subCategories.${catIndex}.subItems.${siIndex}.depth`)} />
-                          <Button type="button" onClick={() => removeCatSubItem(siIndex)}>Remove</Button>
                         </div>
                       ))}
                       <Button type="button" variant="outline" size="sm" onClick={() => appendCatSubItem({ name: "", nos: 0, length: 0, breadth: 0, depth: 0 })}><PlusCircle className="mr-2 h-4 w-4" /> Add Sub Item</Button>
-                      <Button type="button" variant="destructive" size="sm" className="ml-2" onClick={() => removeCategory(catIndex)}>Remove Category</Button>
                     </div>
                   )
                 })}
