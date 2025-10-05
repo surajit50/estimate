@@ -270,8 +270,10 @@ export default function AddWorkItemDialog({
             )}
 
             <div>
-              <p>Total Quantity: {totalQuantity}</p>
-              <p>Total Amount: {totalAmount}</p>
+              <p>Total Quantity: {totalQuantity.toFixed(3)} {selectedUnitSymbol}</p>
+              <p>
+                Total Amount: {Number(totalAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+              </p>
             </div>
 
             <DialogFooter>

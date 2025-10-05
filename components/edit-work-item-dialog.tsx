@@ -568,13 +568,12 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                                   <FormLabel className="text-xs">Sub-total</FormLabel>
                                   <p className="text-sm font-medium text-primary py-2">
                                     {(() => {
-                                      const nos = Number(form.watch(`subCategories.${categoryIndex}.subItems.${subItemIndex}.nos`) || 0)
-                                      const length = Number(form.watch(`subCategories.${categoryIndex}.subItems.${subItemIndex}.length`) || 0)
-                                      const breadth = Number(form.watch(`subCategories.${categoryIndex}.subItems.${subItemIndex}.breadth`) || 0)
-                                      const depth = Number(form.watch(`subCategories.${categoryIndex}.subItems.${subItemIndex}.depth`) || 0)
-                                      return ((nos * length * breadth * depth) || 0).toFixed(3)
-                                    })()}{" "}
-                                    m³
+                                      const n = form.watch(`subCategories.${categoryIndex}.subItems.${subItemIndex}.nos`) || 0
+                                      const l = form.watch(`subCategories.${categoryIndex}.subItems.${subItemIndex}.length`) || 0
+                                      const b = form.watch(`subCategories.${categoryIndex}.subItems.${subItemIndex}.breadth`) || 0
+                                      const d = form.watch(`subCategories.${categoryIndex}.subItems.${subItemIndex}.depth`) || 0
+                                      return calculateSubItemQuantity({ nos: n, length: l, breadth: b, depth: d }, selectedUnitSymbol).toFixed(3)
+                                    })()} {selectedUnitSymbol}
                                   </p>
                                 </div>
                               </div>
