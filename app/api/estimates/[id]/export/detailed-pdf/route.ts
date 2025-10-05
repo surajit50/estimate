@@ -1,4 +1,4 @@
-```ts
+
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { format } from "date-fns"
@@ -212,4 +212,4 @@ export async function GET(
     return NextResponse.json({ error: "Failed to generate detailed PDF" }, { status: 500 })
   }
 }
-```
+
