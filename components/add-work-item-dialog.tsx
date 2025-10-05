@@ -9,7 +9,7 @@ import {
   CommandInput,
   CommandItem,
 } from "@/components/ui/command"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -26,24 +26,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Check, ChevronsUpDown, PlusCircle } from "lucide-react"
+import { ChevronsUpDown, PlusCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useForm, useFieldArray } from "react-hook-form"
-import { useQuery } from "@tanstack/react-query"
-import axios from "axios"
 import { ScrollArea } from "@/components/ui/scroll-area"
-
-interface UnitType {
-  id: string
-  unitName: string
-}
-
-interface RateType {
-  id: string
-  description: string
-  unit: string
-  rate: number
-}
+import type { WorkItemWithUnit, UnitMasterType, RateLibraryType } from "@/lib/types"
 
 interface WorkItemForm {
   name: string
@@ -56,8 +43,25 @@ interface WorkItemForm {
   }[]
 }
 
-export default function AddWorkItemDialog() {
-  const [open, setOpen] = useState(false)
+interface AddWorkItemDialogProps {
+  open: boolean
+  onOpenChange: React.Dispatch<React.SetStateAction<boolean>>
+  onAdd: (item: WorkItemWithUnit) => void
+  estimateId: string
+  units: UnitMasterType[]
+  rates: RateLibraryType[]
+  nextItemNo: number
+}
+
+export default function AddWorkItemDialog({
+  open,
+  onOpenChange,
+  onAdd,
+  estimateId,
+  units,
+  rates,
+  nextItemNo,
+}: AddWorkItemDialogProps) {
   const [mode, setMode] = useState<"direct" | "hierarchical">("direct")
 
   const form = useForm<WorkItemForm>({
@@ -77,13 +81,13 @@ export default function AddWorkItemDialog() {
   } = useFieldArray({ control: form.control, name: "subCategories" })
 
   // unit-aware quantity calculation
-  const calculateQuantity = (item: any, unit: string) => {
+  const calculateQuantity = (item: any, unitSymbol: string) => {
     const l = Number(item.length) || 0
     const b = Number(item.breadth) || 0
     const d = Number(item.depth) || 0
     const n = Number(item.nos) || 0
 
-    switch (unit) {
+    switch (unitSymbol) {
       case "nos":
         return n
       case "m":
@@ -106,28 +110,66 @@ export default function AddWorkItemDialog() {
   const subItems = form.watch("subItems")
   const subCategories = form.watch("subCategories")
 
+  const selectedUnitSymbol = units.find((u) => u.id === unitId)?.unitSymbol ?? ""
+
   const totalQuantity =
-    (subItems?.reduce((sum, si) => sum + calculateQuantity(si, unitId), 0) || 0) +
+    (subItems?.reduce((sum, si) => sum + calculateQuantity(si, selectedUnitSymbol), 0) || 0) +
     (subCategories?.reduce(
       (sum, cat) =>
-        sum + (cat.subItems?.reduce((s, si) => s + calculateQuantity(si, unitId), 0) || 0),
+        sum + (cat.subItems?.reduce((s, si) => s + calculateQuantity(si, selectedUnitSymbol), 0) || 0),
       0
     ) || 0)
 
   const totalAmount = totalQuantity * (rate || 0)
 
-  const { data: units } = useQuery<UnitType[]>({ queryKey: ["units"], queryFn: async () => (await axios.get("/api/units")).data })
-  const { data: rates } = useQuery<RateType[]>({ queryKey: ["rates"], queryFn: async () => (await axios.get("/api/rates")).data })
+  const onSubmit = async (data: WorkItemForm) => {
+    const payload = {
+      estimateId,
+      itemNo: nextItemNo,
+      pageRef: null,
+      description: data.name,
+      unitId: data.unitId,
+      rate: data.rate,
+      quantity: totalQuantity,
+      amount: totalAmount,
+      subItems: (data.subItems || []).map((si) => ({
+        description: si.name,
+        nos: si.nos ?? 0,
+        length: si.length ?? 0,
+        breadth: si.breadth ?? 0,
+        depth: si.depth ?? 0,
+        unitSymbol: selectedUnitSymbol,
+      })),
+      subCategories: (data.subCategories || []).map((cat) => ({
+        categoryName: cat.name,
+        description: null,
+        subItems: (cat.subItems || []).map((si) => ({
+          description: si.name,
+          nos: si.nos ?? 0,
+          length: si.length ?? 0,
+          breadth: si.breadth ?? 0,
+          depth: si.depth ?? 0,
+          unitSymbol: selectedUnitSymbol,
+        })),
+      })),
+    }
 
-  const onSubmit = (data: WorkItemForm) => {
-    console.log({ ...data, totalQuantity, totalAmount })
-    setOpen(false)
+    const response = await fetch("/api/work-items", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+
+    if (response.ok) {
+      const created: WorkItemWithUnit = await response.json()
+      onAdd(created)
+      onOpenChange(false)
+    }
   }
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>Add Work Item</Button>
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>Add Work Item</DialogTitle>
@@ -156,12 +198,11 @@ export default function AddWorkItemDialog() {
                         <CommandItem
                           key={r.id}
                           onSelect={() => {
-                            form.setValue("rate", r.rate)
-                            const u = units?.find((u) => u.unitName === r.unit)
-                            if (u) form.setValue("unitId", u.id)
+                            form.setValue("rate", r.standardRate)
+                            form.setValue("unitId", r.unitId)
                           }}
                         >
-                          {r.description} ({r.unit}) - {r.rate}
+                          {r.description} ({r.unit.unitSymbol}) - {r.standardRate}
                         </CommandItem>
                       ))}
                     </CommandGroup>
@@ -171,7 +212,7 @@ export default function AddWorkItemDialog() {
             </div>
             <div>
               <Label>Unit</Label>
-              <select {...form.register("unitId")}> 
+              <select {...form.register("unitId")}>
                 <option value="">Select Unit</option>
                 {units?.map((u) => (
                   <option key={u.id} value={u.id}>{u.unitName}</option>
