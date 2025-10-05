@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, Plus, Trash2 } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
-import { useForm, useFieldArray } from "react-hook-form"
+import { useForm, useFieldArray, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { workItemSchema, type WorkItemFormValues } from "@/lib/schemas"
@@ -58,7 +58,7 @@ interface AddWorkItemDialogProps {
   nextItemNo: number
 }
 
-export default function AddWorkItemDialog({
+export function AddWorkItemDialog({
   open,
   onOpenChange,
   onAdd,
@@ -98,10 +98,10 @@ export default function AddWorkItemDialog({
   })
 
   // Watch specific keys for reliable reactivity
-  const watchedSubItems = form.watch("subItems") || []
-  const watchedSubCategories = form.watch("subCategories") || []
-  const watchedRate = Number(form.watch("rate") ?? 0)
-  const selectedUnitId = form.watch("unitId")
+  const watchedSubItems = useWatch({ control: form.control, name: "subItems" }) || []
+  const watchedSubCategories = useWatch({ control: form.control, name: "subCategories" }) || []
+  const watchedRate = Number(useWatch({ control: form.control, name: "rate" }) ?? 0)
+  const selectedUnitId = useWatch({ control: form.control, name: "unitId" })
 
   const selectedUnit = units.find((u) => u.id === selectedUnitId)
   const unitSymbol = selectedUnit?.unitSymbol || ""
@@ -186,6 +186,10 @@ export default function AddWorkItemDialog({
     [unitSymbol, getRequiredDims, inferDimsFromSubItem],
   )
 
+  // Stable hashes so totals recompute when any inner field changes
+  const subItemsHash = React.useMemo(() => JSON.stringify(watchedSubItems), [watchedSubItems])
+  const subCatsHash = React.useMemo(() => JSON.stringify(watchedSubCategories), [watchedSubCategories])
+
   // Real-time calculated quantity
   const calculatedQuantity = React.useMemo(() => {
     let totalQuantity = 0
@@ -209,7 +213,7 @@ export default function AddWorkItemDialog({
     }
 
     return totalQuantity
-  }, [watchedSubItems, watchedSubCategories, calculateSubItemQuantity])
+  }, [subItemsHash, subCatsHash, calculateSubItemQuantity])
 
   // Real-time calculated amount
   const calculatedAmount = React.useMemo(() => {
