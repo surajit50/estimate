@@ -1,8 +1,15 @@
 "use client"
 
-import * as React from "react"
+import type React from "react"
 
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -13,881 +20,227 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Plus, Trash2 } from "lucide-react"
-import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Check, ChevronsUpDown, PlusCircle } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { useForm, useFieldArray } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { workItemSchema, type WorkItemFormValues } from "@/lib/schemas"
+import { useQuery } from "@tanstack/react-query"
+import axios from "axios"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
-interface Unit {
+interface UnitType {
   id: string
   unitName: string
-  unitSymbol: string
 }
 
-interface Rate {
+interface RateType {
   id: string
   description: string
+  unit: string
+  rate: number
+}
+
+interface WorkItemForm {
+  name: string
+  rate: number
   unitId: string
-  standardRate: number
+  subItems: { name: string; length?: number; breadth?: number; depth?: number; nos?: number }[]
+  subCategories: {
+    name: string
+    subItems: { name: string; length?: number; breadth?: number; depth?: number; nos?: number }[]
+  }[]
 }
 
-interface SubItemFormValues {
-  description: string
-  nos: number | string
-  length: number | string
-  breadth: number | string
-  depth: number | string
-}
+export default function AddWorkItemDialog() {
+  const [open, setOpen] = useState(false)
+  const [mode, setMode] = useState<"direct" | "hierarchical">("direct")
 
-interface SubCategoryFormValues {
-  categoryName: string
-  description: string
-  subItems: SubItemFormValues[]
-}
-
-interface AddWorkItemDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onAdd: (item: any) => void
-  estimateId: string
-  units: Unit[]
-  rates: Rate[]
-  nextItemNo: number
-}
-
-export function AddWorkItemDialog({
-  open,
-  onOpenChange,
-  onAdd,
-  estimateId,
-  units,
-  rates,
-  nextItemNo,
-}: AddWorkItemDialogProps) {
-  const form = useForm<WorkItemFormValues>({
-    resolver: zodResolver(workItemSchema),
-    defaultValues: {
-      pageRef: "",
-      description: "",
-      unitId: "",
-      rate: 0,
-      subCategories: [],
-      subItems: [],
-    },
+  const form = useForm<WorkItemForm>({
+    defaultValues: { name: "", rate: 0, unitId: "", subItems: [], subCategories: [] },
   })
 
-  const { fields: subItemFields, append: appendSubItem, remove: removeSubItem } = useFieldArray({
-    control: form.control,
-    name: "subItems",
-  })
+  const {
+    fields: subItemFields,
+    append: appendSubItem,
+    remove: removeSubItem,
+  } = useFieldArray({ control: form.control, name: "subItems" })
 
-  const { fields: subCategoryFields, append: appendSubCategory, remove: removeSubCategory } = useFieldArray({
-    control: form.control,
-    name: "subCategories",
-  })
+  const {
+    fields: categoryFields,
+    append: appendCategory,
+    remove: removeCategory,
+  } = useFieldArray({ control: form.control, name: "subCategories" })
 
-  // Watch specific keys for reliable reactivity
-  const watchedSubItems = form.watch("subItems") || []
-  const watchedSubCategories = form.watch("subCategories") || []
-  const watchedRate = Number(form.watch("rate") ?? 0)
-  const selectedUnitId = form.watch("unitId")
+  // unit-aware quantity calculation
+  const calculateQuantity = (item: any, unit: string) => {
+    const l = Number(item.length) || 0
+    const b = Number(item.breadth) || 0
+    const d = Number(item.depth) || 0
+    const n = Number(item.nos) || 0
 
-  const selectedUnit = units.find((u) => u.id === selectedUnitId)
-  const unitSymbol = selectedUnit?.unitSymbol || "m³"
-
-  // Derived UI flags (from field arrays)
-  const hasDirectSubItems = subItemFields.length > 0
-  const hasHierarchicalStructure = subCategoryFields.length > 0
-
-  // Reset form when dialog closes
-  React.useEffect(() => {
-    if (!open) {
-      form.reset({
-        pageRef: "",
-        description: "",
-        unitId: "",
-        rate: 0,
-        subCategories: [],
-        subItems: [],
-      })
-    }
-  }, [open, form])
-
-  // Robust parse helper: treat empty/undefined as fallback (so partial inputs don't zero everything)
-  const parseNumber = React.useCallback((value: any, fallback = 1) => {
-    if (value === undefined || value === null || value === "") return fallback
-    const n = Number(value)
-    return Number.isFinite(n) ? n : fallback
-  }, [])
-
-  // Optimized calculation function
-  const calculateSubItemQuantity = React.useCallback((subItem: any): number => {
-    if (!subItem) return 0
-
-    // nos default to 1 if missing (so e.g., a single length entry still counts)
-    const nos = parseNumber(subItem.nos, 1)
-    const length = parseNumber(subItem.length, 1)
-    const breadth = parseNumber(subItem.breadth, 1)
-    const depth = parseNumber(subItem.depth, 1)
-
-    return nos * length * breadth * depth
-  }, [parseNumber])
-
-  // Real-time calculated quantity
-  const calculatedQuantity = React.useMemo(() => {
-    let totalQuantity = 0
-
-    // Calculate from direct sub-items (watched values)
-    if (Array.isArray(watchedSubItems)) {
-      watchedSubItems.forEach((item: any) => {
-        totalQuantity += calculateSubItemQuantity(item)
-      })
-    }
-
-    // Calculate from sub-categories
-    if (Array.isArray(watchedSubCategories)) {
-      watchedSubCategories.forEach((category: any) => {
-        if (category?.subItems && Array.isArray(category.subItems)) {
-          category.subItems.forEach((subItem: any) => {
-            totalQuantity += calculateSubItemQuantity(subItem)
-          })
-        }
-      })
-    }
-
-    return totalQuantity
-  }, [watchedSubItems, watchedSubCategories, calculateSubItemQuantity])
-
-  // Real-time calculated amount
-  const calculatedAmount = React.useMemo(() => {
-    return calculatedQuantity * watchedRate
-  }, [calculatedQuantity, watchedRate])
-
-  // Get individual sub-item quantity for display (handles undefined safely)
-  const getSubItemQuantity = React.useCallback((subItem: any): number => {
-    return calculateSubItemQuantity(subItem)
-  }, [calculateSubItemQuantity])
-
-  // Rate selection handler
-  const handleRateSelect = (rateId: string) => {
-    const selectedRate = rates.find((r) => r.id === rateId)
-    if (selectedRate) {
-      form.setValue("description", selectedRate.description)
-      form.setValue("unitId", selectedRate.unitId)
-      form.setValue("rate", Number(selectedRate.standardRate))
+    switch (unit) {
+      case "nos":
+        return n
+      case "m":
+        return l
+      case "m2":
+        return l * b
+      case "m3":
+        return l * b * d
+      case "kg":
+      case "bag":
+      case "mt":
+        return n > 0 ? n : l * b * d
+      default:
+        return n || (l * b * d)
     }
   }
 
-  // Structure selection handlers
-  const handleSelectDirectSubItems = () => {
-    form.setValue("subCategories", [], { shouldValidate: true, shouldDirty: true })
-    if (subItemFields.length === 0) {
-      appendSubItem({ description: "", nos: 1, length: 1, breadth: 1, depth: 1 })
-    }
-  }
+  const unitId = form.watch("unitId")
+  const rate = form.watch("rate")
+  const subItems = form.watch("subItems")
+  const subCategories = form.watch("subCategories")
 
-  const handleSelectHierarchicalStructure = () => {
-    form.setValue("subItems", [], { shouldValidate: true, shouldDirty: true })
-    if (subCategoryFields.length === 0) {
-      appendSubCategory({
-        categoryName: "",
-        description: "",
-        subItems: [{ description: "", nos: 1, length: 1, breadth: 1, depth: 1 }],
-      })
-    }
-  }
+  const totalQuantity =
+    (subItems?.reduce((sum, si) => sum + calculateQuantity(si, unitId), 0) || 0) +
+    (subCategories?.reduce(
+      (sum, cat) =>
+        sum + (cat.subItems?.reduce((s, si) => s + calculateQuantity(si, unitId), 0) || 0),
+      0
+    ) || 0)
 
-  // Add sub-item to a category (use setValue with options so watchers fire)
-  const addSubItemToCategory = (categoryIndex: number) => {
-    const currentSubItems = form.getValues(`subCategories.${categoryIndex}.subItems`) || []
-    const newSubItems = [
-      ...currentSubItems,
-      { description: "", nos: 1, length: 1, breadth: 1, depth: 1 },
-    ]
-    form.setValue(`subCategories.${categoryIndex}.subItems`, newSubItems, { shouldValidate: true, shouldDirty: true })
-  }
+  const totalAmount = totalQuantity * (rate || 0)
 
-  // Remove sub-item from a category
-  const removeSubItemFromCategory = (categoryIndex: number, subItemIndex: number) => {
-    const currentSubItems = form.getValues(`subCategories.${categoryIndex}.subItems`) || []
-    const newSubItems = currentSubItems.filter((_: any, idx: number) => idx !== subItemIndex)
-    form.setValue(`subCategories.${categoryIndex}.subItems`, newSubItems, { shouldValidate: true, shouldDirty: true })
-  }
+  const { data: units } = useQuery<UnitType[]>({ queryKey: ["units"], queryFn: async () => (await axios.get("/api/units")).data })
+  const { data: rates } = useQuery<RateType[]>({ queryKey: ["rates"], queryFn: async () => (await axios.get("/api/rates")).data })
 
-  // Form validation state
-  const isFormValid = React.useMemo(() => {
-    const hasStructure = (Array.isArray(watchedSubItems) && watchedSubItems.length > 0) ||
-      (Array.isArray(watchedSubCategories) && watchedSubCategories.some((c: any) => Array.isArray(c.subItems) && c.subItems.length > 0))
-    const hasPositiveQuantity = calculatedQuantity > 0
-    const hasDescription = (form.getValues("description") || "").toString().trim().length > 0
-    const hasUnit = (form.getValues("unitId") || "").toString().length > 0
-    const hasRateFlag = watchedRate > 0
-
-    return hasStructure && hasPositiveQuantity && hasDescription && hasUnit && hasRateFlag
-  }, [watchedSubItems, watchedSubCategories, calculatedQuantity, watchedRate, form])
-
-  // Submit handler
-  const onSubmit = async (values: WorkItemFormValues) => {
-    try {
-      // Recalculate quantities from current watched values to be safe
-      const finalQuantity = calculatedQuantity
-      const finalAmount = calculatedAmount
-
-      const payload = {
-        estimateId,
-        itemNo: nextItemNo,
-        pageRef: values.pageRef || null,
-        description: values.description,
-        unitId: values.unitId,
-        rate: values.rate,
-        quantity: finalQuantity,
-        amount: finalAmount,
-        subCategories: (values.subCategories || []).map((category) => ({
-          categoryName: category.categoryName,
-          description: category.description,
-          subItems: (category.subItems || []).map((item) => ({
-            description: item.description,
-            nos: item.nos,
-            length: item.length,
-            breadth: item.breadth,
-            depth: item.depth,
-            quantity: calculateSubItemQuantity(item),
-            unitSymbol: selectedUnit?.unitSymbol || "",
-          })),
-        })),
-        subItems: (values.subItems || []).map((item) => ({
-          description: item.description,
-          nos: item.nos,
-          length: item.length,
-          breadth: item.breadth,
-          depth: item.depth,
-          quantity: calculateSubItemQuantity(item),
-          unitSymbol: selectedUnit?.unitSymbol || "",
-        })),
-      }
-
-      const response = await fetch("/api/work-items", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: "Failed to create work item" }))
-        throw new Error(errorData.message || "Failed to create work item")
-      }
-
-      const newItem = await response.json()
-      onAdd(newItem)
-      onOpenChange(false)
-    } catch (error) {
-      console.error("Error adding work item:", error)
-    }
+  const onSubmit = (data: WorkItemForm) => {
+    console.log({ ...data, totalQuantity, totalAmount })
+    setOpen(false)
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[95vh] flex flex-col rounded-xl p-0 overflow-hidden">
-        <DialogHeader className="border-b bg-white px-6 py-4 shrink-0">
-          <DialogTitle className="text-2xl font-bold">➕ Add Work Item</DialogTitle>
-          <DialogDescription className="text-gray-600">
-            Create a new work item with sub-item breakdown for accurate quantity calculation.
-          </DialogDescription>
-        </DialogHeader>
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
-            {/* Scrollable Content Area */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-              {/* Rate Library */}
-              <section className="bg-gray-50 border rounded-lg p-4 shadow-sm">
-                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">📚 Rate Library</h3>
-                <Command className="rounded-lg border shadow-sm">
-                  <CommandInput placeholder="Search rates..." className="h-10" />
-                  <CommandList>
-                    <CommandEmpty>No rates found.</CommandEmpty>
-                    <CommandGroup className="max-h-[160px] overflow-auto">
-                      {rates.map((rate) => (
+    <>
+      <Button onClick={() => setOpen(true)}>Add Work Item</Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Add Work Item</DialogTitle>
+            <DialogDescription>Create a new work item with details.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div>
+              <Label>Item Name</Label>
+              <Input {...form.register("name", { required: true })} />
+            </div>
+            <div>
+              <Label>Rate Library</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" className="w-full justify-between">
+                    {rate ? `${rate}` : "Select Rate"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search rate..." />
+                    <CommandEmpty>No rate found.</CommandEmpty>
+                    <CommandGroup>
+                      {rates?.map((r) => (
                         <CommandItem
-                          key={rate.id}
-                          value={rate.id}
-                          onSelect={() => handleRateSelect(rate.id)}
-                          className="flex justify-between items-center cursor-pointer hover:bg-primary/5 px-4 py-2"
+                          key={r.id}
+                          onSelect={() => {
+                            form.setValue("rate", r.rate)
+                            const u = units?.find((u) => u.unitName === r.unit)
+                            if (u) form.setValue("unitId", u.id)
+                          }}
                         >
-                          <span className="truncate flex-1">{rate.description}</span>
-                          <span className="text-primary font-medium ml-2 shrink-0">₹{rate.standardRate}</span>
+                          {r.description} ({r.unit}) - {r.rate}
                         </CommandItem>
                       ))}
                     </CommandGroup>
-                  </CommandList>
-                </Command>
-              </section>
-
-              {/* Basic Details */}
-              <section className="bg-white border rounded-lg p-6 shadow-sm">
-                <h3 className="text-lg font-semibold mb-4">📝 Basic Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="pageRef"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Page & Item Reference</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., 1/2 a, 332/18.07" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="unitId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Unit *</FormLabel>
-                        <FormControl>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select unit" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {units.map((unit) => (
-                                <SelectItem key={unit.id} value={unit.id}>
-                                  {unit.unitName} ({unit.unitSymbol})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem className="mt-4">
-                      <FormLabel>Item Description *</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          rows={3}
-                          className="resize-none"
-                          placeholder="Enter detailed work item description"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="rate"
-                  render={({ field }) => (
-                    <FormItem className="mt-4">
-                      <FormLabel>Rate (₹) *</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="Enter rate"
-                          value={field.value ?? ""}
-                          onChange={(e) => {
-                            const value = e.target.value === "" ? 0 : Number(e.target.value)
-                            field.onChange(value)
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </section>
-
-              {/* Structure Selection */}
-              <section className="bg-blue-50 border rounded-lg p-6 shadow-sm">
-                <h3 className="text-lg font-semibold mb-4">🏗️ Work Item Structure</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Button
-                    type="button"
-                    variant={hasDirectSubItems ? "default" : "outline"}
-                    onClick={handleSelectDirectSubItems}
-                    className="h-20 flex flex-col items-center justify-center"
-                  >
-                    <div className="text-2xl mb-2">📦</div>
-                    <div className="font-medium">Direct Sub-Items</div>
-                    <div className="text-xs text-gray-600">Simple quantity breakdown</div>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={hasHierarchicalStructure ? "default" : "outline"}
-                    onClick={handleSelectHierarchicalStructure}
-                    className="h-20 flex flex-col items-center justify-center"
-                  >
-                    <div className="text-2xl mb-2">🏛️</div>
-                    <div className="font-medium">Hierarchical Structure</div>
-                    <div className="text-xs text-gray-600">Categories with sub-items</div>
-                  </Button>
-                </div>
-
-                {/* Structure Status */}
-                <div className="mt-4 p-3 bg-white rounded border text-sm">
-                  <p className="font-medium">Current Structure:</p>
-                  <p className="text-gray-600">
-                    {hasDirectSubItems && "📦 Direct Sub-Items"}
-                    {hasHierarchicalStructure && "🏛️ Hierarchical Structure"}
-                    {!hasDirectSubItems && !hasHierarchicalStructure && "No structure selected"}
-                  </p>
-                </div>
-              </section>
-
-              {/* Sub-categories */}
-              {hasHierarchicalStructure && (
-                <section className="bg-gray-50 border rounded-lg p-6 shadow-sm">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h3 className="text-lg font-semibold">🏛️ Sub-Categories</h3>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Organize work items into categories (e.g., "A: Lead upto 100 m", "B: Lead upto 1000 m")
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() =>
-                        appendSubCategory({
-                          categoryName: "",
-                          description: "",
-                          subItems: [{ description: "", nos: 1, length: 1, breadth: 1, depth: 1 }],
-                        })
-                      }
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Category
-                    </Button>
-                  </div>
-
-                  <div className="space-y-6">
-                    {subCategoryFields.map((category, categoryIndex) => {
-                      const categorySubItems = (watchedSubCategories[categoryIndex]?.subItems) || []
-
-                      return (
-                        <div key={category.id} className="p-4 bg-white rounded-lg border shadow-sm">
-                          <div className="flex items-start gap-2 mb-4">
-                            <FormField
-                              control={form.control}
-                              name={`subCategories.${categoryIndex}.categoryName` as const}
-                              render={({ field }) => (
-                                <FormItem className="flex-1">
-                                  <FormLabel className="text-sm font-medium">Category Name *</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="e.g., A: Lead upto 100 m" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            {subCategoryFields.length > 1 && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeSubCategory(categoryIndex)}
-                                className="shrink-0 mt-7"
-                                aria-label={`Remove category ${categoryIndex + 1}`}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            )}
-                          </div>
-
-                          <FormField
-                            control={form.control}
-                            name={`subCategories.${categoryIndex}.description` as const}
-                            render={({ field }) => (
-                              <FormItem className="mb-4">
-                                <FormLabel className="text-sm font-medium">Category Description</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Optional description for this category" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          {/* Sub-items within this category */}
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <h4 className="font-medium text-sm">Sub-items in this category</h4>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => addSubItemToCategory(categoryIndex)}
-                              >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add Sub-Item
-                              </Button>
-                            </div>
-
-                            {categorySubItems.map((subItem: any, subItemIndex: number) => (
-                              <div key={subItemIndex} className="p-3 bg-gray-50 rounded border space-y-3">
-                                <div className="flex items-start gap-2">
-                                  <FormField
-                                    control={form.control}
-                                    name={`subCategories.${categoryIndex}.subItems.${subItemIndex}.description` as const}
-                                    render={({ field }) => (
-                                      <FormItem className="flex-1">
-                                        <FormLabel className="text-xs">Sub-item Description</FormLabel>
-                                        <FormControl>
-                                          <Input placeholder="e.g., Girth above 300 mm to 600 mm" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => removeSubItemFromCategory(categoryIndex, subItemIndex)}
-                                    className="shrink-0 mt-6"
-                                    aria-label={`Remove sub-item ${subItemIndex + 1} from category ${categoryIndex + 1}`}
-                                  >
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                  </Button>
-                                </div>
-
-                                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                                  <FormField
-                                    control={form.control}
-                                    name={`subCategories.${categoryIndex}.subItems.${subItemIndex}.nos` as const}
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel className="text-xs">Nos</FormLabel>
-                                        <FormControl>
-                                          <Input
-                                            type="number"
-                                            step="0.01"
-                                            placeholder="Nos"
-                                            value={field.value ?? ""}
-                                            onChange={(e) => {
-                                              const value = e.target.value === "" ? "" : Number(e.target.value)
-                                              field.onChange(value)
-                                            }}
-                                          />
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                  <FormField
-                                    control={form.control}
-                                    name={`subCategories.${categoryIndex}.subItems.${subItemIndex}.length` as const}
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel className="text-xs">Length (m)</FormLabel>
-                                        <FormControl>
-                                          <Input
-                                            type="number"
-                                            step="0.01"
-                                            placeholder="Length"
-                                            value={field.value ?? ""}
-                                            onChange={(e) => {
-                                              const value = e.target.value === "" ? "" : Number(e.target.value)
-                                              field.onChange(value)
-                                            }}
-                                          />
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                  <FormField
-                                    control={form.control}
-                                    name={`subCategories.${categoryIndex}.subItems.${subItemIndex}.breadth` as const}
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel className="text-xs">Breadth (m)</FormLabel>
-                                        <FormControl>
-                                          <Input
-                                            type="number"
-                                            step="0.01"
-                                            placeholder="Breadth"
-                                            value={field.value ?? ""}
-                                            onChange={(e) => {
-                                              const value = e.target.value === "" ? "" : Number(e.target.value)
-                                              field.onChange(value)
-                                            }}
-                                          />
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                  <FormField
-                                    control={form.control}
-                                    name={`subCategories.${categoryIndex}.subItems.${subItemIndex}.depth` as const}
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel className="text-xs">Depth (m)</FormLabel>
-                                        <FormControl>
-                                          <Input
-                                            type="number"
-                                            step="0.01"
-                                            placeholder="Depth"
-                                            value={field.value ?? ""}
-                                            onChange={(e) => {
-                                              const value = e.target.value === "" ? "" : Number(e.target.value)
-                                              field.onChange(value)
-                                            }}
-                                          />
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                  <div className="flex flex-col justify-end">
-                                    <FormLabel className="text-xs">Sub-total</FormLabel>
-                                    <p className="text-sm font-medium text-primary py-2">
-                                      {getSubItemQuantity(subItem).toFixed(3)} {unitSymbol}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </section>
-              )}
-
-              {/* Direct Sub-items */}
-              {hasDirectSubItems && (
-                <section className="bg-gray-50 border rounded-lg p-6 shadow-sm">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h3 className="text-lg font-semibold">📦 Direct Sub-Items</h3>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Add sub-items directly to calculate total quantity. Each sub-item requires dimensions.
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => appendSubItem({ description: "", nos: 1, length: 1, breadth: 1, depth: 1 })}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Sub-Item
-                    </Button>
-                  </div>
-
-                  <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                    {subItemFields.map((item, index) => {
-                      const subItem = watchedSubItems[index]
-
-                      return (
-                        <div key={item.id} className="p-4 bg-white rounded-lg border shadow-sm space-y-4">
-                          <div className="flex items-start gap-2">
-                            <FormField
-                              control={form.control}
-                              name={`subItems.${index}.description` as const}
-                              render={({ field }) => (
-                                <FormItem className="flex-1">
-                                  <FormLabel className="text-sm font-medium">Sub-item Description</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="Describe this part of the work..." {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            {subItemFields.length > 1 && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeSubItem(index)}
-                                className="shrink-0 mt-7"
-                                aria-label={`Remove sub-item ${index + 1}`}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            )}
-                          </div>
-
-                          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                            <FormField
-                              control={form.control}
-                              name={`subItems.${index}.nos` as const}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-xs">Quantity (Nos)</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      placeholder="Nos"
-                                      value={field.value ?? ""}
-                                      onChange={(e) => {
-                                        const value = e.target.value === "" ? "" : Number(e.target.value)
-                                        field.onChange(value)
-                                      }}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name={`subItems.${index}.length` as const}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-xs">Length (m)</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      placeholder="Length"
-                                      value={field.value ?? ""}
-                                      onChange={(e) => {
-                                        const value = e.target.value === "" ? "" : Number(e.target.value)
-                                        field.onChange(value)
-                                      }}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name={`subItems.${index}.breadth` as const}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-xs">Breadth (m)</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      placeholder="Breadth"
-                                      value={field.value ?? ""}
-                                      onChange={(e) => {
-                                        const value = e.target.value === "" ? "" : Number(e.target.value)
-                                        field.onChange(value)
-                                      }}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name={`subItems.${index}.depth` as const}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-xs">Depth (m)</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      placeholder="Depth"
-                                      value={field.value ?? ""}
-                                      onChange={(e) => {
-                                        const value = e.target.value === "" ? "" : Number(e.target.value)
-                                        field.onChange(value)
-                                      }}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <div className="flex flex-col justify-end">
-                              <FormLabel className="text-xs">Sub-total</FormLabel>
-                              <p className="text-sm font-medium text-primary py-2">
-                                {getSubItemQuantity(subItem).toFixed(3)} {unitSymbol}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </section>
-              )}
-
-              {/* Summary - FIXED with proper real-time updates */}
-              <div className="mt-6 bg-primary/5 border rounded-lg p-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Quantity</p>
-                    <p className="text-2xl font-bold text-primary">
-                      {calculatedQuantity.toFixed(3)} {unitSymbol}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Amount</p>
-                    <p className="text-2xl font-bold text-primary">
-                      ₹{calculatedAmount.toLocaleString("en-IN", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Validation Status */}
-                {!isFormValid && (
-                  <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded text-sm">
-                    <p className="text-amber-800 font-medium">⚠️ Form Requirements:</p>
-                    <ul className="text-amber-700 list-disc list-inside mt-1 space-y-1">
-                      {!form.getValues("description")?.toString().trim() && <li>Description is required</li>}
-                      {!form.getValues("unitId") && <li>Unit must be selected</li>}
-                      {watchedRate <= 0 && <li>Rate must be greater than 0</li>}
-                      {!hasDirectSubItems && !hasHierarchicalStructure && <li>Select a work item structure</li>}
-                      {calculatedQuantity <= 0 && <li>Total quantity must be greater than 0</li>}
-                    </ul>
-                  </div>
-                )}
-              </div>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <Label>Unit</Label>
+              <select {...form.register("unitId")}> 
+                <option value="">Select Unit</option>
+                {units?.map((u) => (
+                  <option key={u.id} value={u.id}>{u.unitName}</option>
+                ))}
+              </select>
             </div>
 
-            {/* Sticky Footer */}
-            <DialogFooter className="border-t bg-white px-6 py-4 shrink-0">
-              <div className="flex w-full justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  disabled={form.formState.isSubmitting}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={form.formState.isSubmitting || !isFormValid}
-                >
-                  {form.formState.isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Add Work Item
-                </Button>
+            <div className="flex gap-2">
+              <Button type="button" variant={mode === "direct" ? "default" : "outline"} onClick={() => setMode("direct")}>Direct Sub-Items</Button>
+              <Button type="button" variant={mode === "hierarchical" ? "default" : "outline"} onClick={() => setMode("hierarchical")}>Hierarchical Structure</Button>
+            </div>
+
+            {mode === "direct" && (
+              <div>
+                <Label>Sub Items</Label>
+                <ScrollArea className="h-48 border p-2">
+                  {subItemFields.map((field, index) => (
+                    <div key={field.id} className="flex gap-2 mb-2">
+                      <Input placeholder="Name" {...form.register(`subItems.${index}.name`)} />
+                      <Input type="number" placeholder="Nos" {...form.register(`subItems.${index}.nos`)} />
+                      <Input type="number" placeholder="Length" {...form.register(`subItems.${index}.length`)} />
+                      <Input type="number" placeholder="Breadth" {...form.register(`subItems.${index}.breadth`)} />
+                      <Input type="number" placeholder="Depth" {...form.register(`subItems.${index}.depth`)} />
+                      <Button type="button" onClick={() => removeSubItem(index)}>Remove</Button>
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" size="sm" onClick={() => appendSubItem({ name: "", nos: 0, length: 0, breadth: 0, depth: 0 })}><PlusCircle className="mr-2 h-4 w-4" /> Add Sub Item</Button>
+                </ScrollArea>
               </div>
+            )}
+
+            {mode === "hierarchical" && (
+              <div>
+                <Label>Sub Categories</Label>
+                {categoryFields.map((cat, catIndex) => {
+                  const { fields: catSubItems, append: appendCatSubItem, remove: removeCatSubItem } = useFieldArray({ control: form.control, name: `subCategories.${catIndex}.subItems` })
+                  return (
+                    <div key={cat.id} className="border p-2 mb-2">
+                      <Input placeholder="Category Name" {...form.register(`subCategories.${catIndex}.name`)} />
+                      {catSubItems.map((field, siIndex) => (
+                        <div key={field.id} className="flex gap-2 mb-2">
+                          <Input placeholder="Name" {...form.register(`subCategories.${catIndex}.subItems.${siIndex}.name`)} />
+                          <Input type="number" placeholder="Nos" {...form.register(`subCategories.${catIndex}.subItems.${siIndex}.nos`)} />
+                          <Input type="number" placeholder="Length" {...form.register(`subCategories.${catIndex}.subItems.${siIndex}.length`)} />
+                          <Input type="number" placeholder="Breadth" {...form.register(`subCategories.${catIndex}.subItems.${siIndex}.breadth`)} />
+                          <Input type="number" placeholder="Depth" {...form.register(`subCategories.${catIndex}.subItems.${siIndex}.depth`)} />
+                          <Button type="button" onClick={() => removeCatSubItem(siIndex)}>Remove</Button>
+                        </div>
+                      ))}
+                      <Button type="button" variant="outline" size="sm" onClick={() => appendCatSubItem({ name: "", nos: 0, length: 0, breadth: 0, depth: 0 })}><PlusCircle className="mr-2 h-4 w-4" /> Add Sub Item</Button>
+                      <Button type="button" variant="destructive" size="sm" className="ml-2" onClick={() => removeCategory(catIndex)}>Remove Category</Button>
+                    </div>
+                  )
+                })}
+                <Button type="button" variant="outline" size="sm" onClick={() => appendCategory({ name: "", subItems: [] })}><PlusCircle className="mr-2 h-4 w-4" /> Add Category</Button>
+              </div>
+            )}
+
+            <div>
+              <p>Total Quantity: {totalQuantity}</p>
+              <p>Total Amount: {totalAmount}</p>
+            </div>
+
+            <DialogFooter>
+              <Button type="submit">Save</Button>
             </DialogFooter>
           </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
