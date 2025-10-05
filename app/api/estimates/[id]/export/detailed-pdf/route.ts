@@ -54,17 +54,17 @@ export async function GET(
       format: "a4"
     })
 
-    // Colors for professional look
-    const primaryColor = [41, 128, 185] // Professional blue
-    const secondaryColor = [52, 152, 219] // Lighter blue
-    const accentColor = [46, 204, 113] // Green for totals
-    const lightGray = [250, 250, 250]
-    const borderGray = [220, 220, 220]
+    // Colors for professional look - using simpler format
+    const primaryColor = [41, 128, 185] as [number, number, number]
+    const secondaryColor = [52, 152, 219] as [number, number, number]
+    const accentColor = [46, 204, 113] as [number, number, number]
+    const lightGray = [250, 250, 250] as [number, number, number]
+    const borderGray = [220, 220, 220] as [number, number, number]
 
     let currentY = 20
 
     // --- Header with Company Info ---
-    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
+    doc.setFillColor(...primaryColor)
     doc.rect(0, 0, doc.internal.pageSize.getWidth(), 50, 'F')
     
     // Company Name
@@ -90,8 +90,8 @@ export async function GET(
     currentY = 60
 
     // --- Estimate Overview Box ---
-    doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
-    doc.setFillColor(lightGray[0], lightGray[1], lightGray[2])
+    doc.setDrawColor(...borderGray)
+    doc.setFillColor(...lightGray)
     doc.rect(15, currentY, doc.internal.pageSize.getWidth() - 30, 35, 'F')
     doc.rect(15, currentY, doc.internal.pageSize.getWidth() - 30, 35, 'S')
 
@@ -151,12 +151,12 @@ export async function GET(
     estimate.workItems.forEach((item, index) => {
       // Main work item row
       tableData.push([
-        { content: item.itemNo.toString(), styles: { fontStyle: 'bold', halign: 'center' } },
-        { content: item.description, styles: { fontStyle: 'bold' } },
-        { content: item.unit.unitSymbol, styles: { halign: 'center' } },
-        { content: item.quantity.toFixed(2), styles: { halign: 'right' } },
-        { content: `₹${item.rate.toFixed(2)}`, styles: { halign: 'right' } },
-        { content: `₹${item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, styles: { halign: 'right', fontStyle: 'bold' } },
+        item.itemNo.toString(),
+        item.description,
+        item.unit.unitSymbol,
+        item.quantity.toFixed(2),
+        `₹${item.rate.toFixed(2)}`,
+        `₹${item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
       ])
 
       totalAmount += item.amount
@@ -170,55 +170,35 @@ export async function GET(
             : "Direct calculation"
             
           tableData.push([
-            { content: `  ${subIndex + 1}`, styles: { fontSize: 7, halign: 'center' } },
-            { content: `  ${subItem.description}`, styles: { fontSize: 7, fontStyle: 'normal' } },
-            { content: subItem.unitSymbol || "-", styles: { fontSize: 7, halign: 'center' } },
-            { content: dimensionText, styles: { fontSize: 7, halign: 'center' } },
-            { content: "", styles: { fontSize: 7 } },
-            { content: "", styles: { fontSize: 7 } },
+            `  ${subIndex + 1}`,
+            `  ${subItem.description}`,
+            subItem.unitSymbol || "-",
+            dimensionText,
+            "",
+            "",
           ])
         })
         
         // Add calculation row for main item
         tableData.push([
-          { content: "", styles: { fontSize: 7 } },
-          { content: "Calculation:", styles: { fontSize: 7, fontStyle: 'italic' } },
-          { content: "", styles: { fontSize: 7 } },
-          { content: item.quantity.toFixed(2), styles: { fontSize: 7, halign: 'right', fontStyle: 'italic' } },
-          { content: `₹${item.rate.toFixed(2)}`, styles: { fontSize: 7, halign: 'right', fontStyle: 'italic' } },
-          { content: `₹${item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, styles: { fontSize: 7, halign: 'right', fontStyle: 'italic' } },
+          "",
+          "Calculation:",
+          "",
+          item.quantity.toFixed(2),
+          `₹${item.rate.toFixed(2)}`,
+          `₹${item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
         ])
         
         // Add empty row for spacing
-        tableData.push([
-          { content: "", styles: { cellPadding: 2 } },
-          { content: "" },
-          { content: "" },
-          { content: "" },
-          { content: "" },
-          { content: "" },
-        ])
+        tableData.push(["", "", "", "", "", ""])
       }
     })
 
     autoTable(doc, {
       startY: currentY,
-      head: [[
-        { content: "Item No.", styles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', halign: 'center' } },
-        { content: "Description", styles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold' } },
-        { content: "Unit", styles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', halign: 'center' } },
-        { content: "Quantity", styles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', halign: 'center' } },
-        { content: "Rate (₹)", styles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', halign: 'center' } },
-        { content: "Amount (₹)", styles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', halign: 'center' } },
-      ]],
+      head: [["Item No.", "Description", "Unit", "Quantity", "Rate (₹)", "Amount (₹)"]],
       body: tableData,
       theme: "grid",
-      styles: {
-        fontSize: 9,
-        cellPadding: 3,
-        lineColor: borderGray,
-        lineWidth: 0.1,
-      },
       headStyles: {
         fillColor: primaryColor,
         textColor: 255,
@@ -226,7 +206,8 @@ export async function GET(
         halign: 'center'
       },
       bodyStyles: {
-        valign: 'top'
+        valign: 'top',
+        fontSize: 9,
       },
       alternateRowStyles: {
         fillColor: [248, 248, 248]
@@ -239,27 +220,42 @@ export async function GET(
         4: { cellWidth: 25, halign: 'right' },
         5: { cellWidth: 30, halign: 'right' },
       },
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+        lineColor: borderGray,
+        lineWidth: 0.1,
+      },
       didParseCell: (data) => {
-        // Style sub-item rows
-        if (data.section === "body" && data.cell.raw && typeof data.cell.raw === 'object' && data.cell.raw.content && data.cell.raw.content.toString().startsWith('  ')) {
-          data.cell.styles.fillColor = [245, 249, 255]
-          data.cell.styles.textColor = [80, 80, 80]
+        // Style main work item rows
+        if (data.section === "body" && data.row.index % 2 === 0 && 
+            data.cell.raw && typeof data.cell.raw === 'string' && 
+            !data.cell.raw.startsWith('  ') && data.cell.raw !== '') {
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.lineWidth = 0.3;
         }
         
-        // Add borders to main items
-        if (data.section === "body" && data.cell.raw && typeof data.cell.raw === 'object' && data.cell.raw.styles && data.cell.raw.styles.fontStyle === 'bold') {
-          data.cell.styles.lineWidth = 0.3
+        // Style sub-item rows
+        if (data.section === "body" && data.cell.raw && typeof data.cell.raw === 'string' && data.cell.raw.startsWith('  ')) {
+          data.cell.styles.fillColor = [245, 249, 255];
+          data.cell.styles.textColor = [80, 80, 80];
+          data.cell.styles.fontSize = 8;
+        }
+        
+        // Style calculation rows
+        if (data.section === "body" && data.cell.raw === "Calculation:") {
+          data.cell.styles.fontStyle = 'italic';
+          data.cell.styles.fontSize = 8;
         }
       },
-      margin: { top: currentY }
     })
 
     const tableEndY = (doc as any).lastAutoTable.finalY
     currentY = tableEndY + 10
 
     // --- Summary Section ---
-    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2])
-    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
+    doc.setDrawColor(...primaryColor)
+    doc.setFillColor(...primaryColor)
     doc.rect(15, currentY, doc.internal.pageSize.getWidth() - 30, 8, 'F')
     
     doc.setTextColor(255, 255, 255)
@@ -299,14 +295,14 @@ export async function GET(
     doc.text(`₹${contingencyAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, summaryRight + 35, currentY)
     
     doc.setFont("helvetica", "bold")
-    doc.setTextColor(accentColor[0], accentColor[1], accentColor[2])
+    doc.setTextColor(...accentColor)
     doc.text(`₹${grandTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, summaryRight + 35, currentY + 12)
 
     currentY += 25
 
     // --- Notes and Footer ---
-    doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
-    doc.setFillColor(lightGray[0], lightGray[1], lightGray[2])
+    doc.setDrawColor(...borderGray)
+    doc.setFillColor(...lightGray)
     doc.rect(15, currentY, doc.internal.pageSize.getWidth() - 30, 25, 'F')
     doc.rect(15, currentY, doc.internal.pageSize.getWidth() - 30, 25, 'S')
 
@@ -331,7 +327,8 @@ export async function GET(
     const pageHeight = doc.internal.pageSize.getHeight()
     doc.setFontSize(7)
     doc.setTextColor(100, 100, 100)
-    doc.text("This is a computer-generated estimate and requires authorized signature for approval", doc.internal.pageSize.getWidth() / 2, pageHeight - 15, { align: "center" })
+    doc.text("This is a computer-generated estimate and requires authorized signature for approval", 
+      doc.internal.pageSize.getWidth() / 2, pageHeight - 15, { align: "center" })
     
     // Page numbers
     const pageCount = doc.getNumberOfPages()
