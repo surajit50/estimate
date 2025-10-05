@@ -4,7 +4,7 @@ import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Trash2 } from "lucide-react"
-import { AddWorkItemDialog } from "@/components/add-work-item-dialog"
+import AddWorkItemDialog from "@/components/add-work-item-dialog"
 import type { WorkItemWithUnit, UnitMasterType, RateLibraryType, SubCategoryType, SubWorkItemType } from "@/lib/types"
 
 interface WorkItemsTableProps {
