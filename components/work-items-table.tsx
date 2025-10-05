@@ -7,7 +7,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PlusCircle, Edit, Trash2, ChevronDown, ChevronRight } from "lucide-react"
 import AddWorkItemDialog from "@/components/add-work-item-dialog"
 import { EditWorkItemDialog } from "@/components/edit-work-item-dialog"
-import { DeleteWorkItemDialog } from "@/components/delete-work-item-dialog"
 import { Badge } from "@/components/ui/badge"
 
 import type { WorkItemWithUnit, UnitMasterType, RateLibraryType, SubWorkItemType } from "@/lib/types"
@@ -33,7 +32,7 @@ export function WorkItemsTable({
 }: WorkItemsTableProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [editItem, setEditItem] = useState<WorkItemWithUnit | null>(null)
-  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
 
   const toggleExpanded = (itemId: string) => {
@@ -53,7 +52,7 @@ export function WorkItemsTable({
 
     if (response.ok) {
       onDelete(id)
-      setDeleteId(null)
+      setConfirmingDeleteId(null)
     }
   }
 
@@ -159,9 +158,28 @@ export function WorkItemsTable({
                               <Button variant="ghost" size="sm" onClick={() => setEditItem(item)}>
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="sm" onClick={() => setDeleteId(item.id)}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
+                              {confirmingDeleteId === item.id ? (
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => handleDelete(item.id)}
+                                  >
+                                    Confirm
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setConfirmingDeleteId(null)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Button variant="ghost" size="sm" onClick={() => setConfirmingDeleteId(item.id)}>
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -262,11 +280,7 @@ export function WorkItemsTable({
         units={units}
         rates={rates}
       />
-      <DeleteWorkItemDialog
-        open={deleteId !== null}
-        onOpenChange={(open) => !open && setDeleteId(null)}
-        onConfirm={() => deleteId && handleDelete(deleteId)}
-      />
+      {/* Removed modal dialog; using inline confirmation instead */}
     </>
   )
 }

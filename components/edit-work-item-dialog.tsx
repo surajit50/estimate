@@ -15,7 +15,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
+import { ChevronsUpDown } from "lucide-react"
 import { Loader2, Plus } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -293,18 +295,39 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                       <FormItem>
                         <FormLabel>Unit *</FormLabel>
                         <FormControl>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select unit" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {units.map((unit) => (
-                                <SelectItem key={unit.id} value={unit.id}>
-                                  {unit.unitName} ({unit.unitSymbol})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" role="combobox" className="w-full justify-between">
+                                  {field.value ? (
+                                    (() => {
+                                      const selected = units.find((u) => u.id === field.value)
+                                      return selected ? `${selected.unitName} (${selected.unitSymbol})` : "Select unit"
+                                    })()
+                                  ) : (
+                                    "Select unit"
+                                  )}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[400px] p-0">
+                                <Command>
+                                  <CommandInput placeholder="Search unit name or symbol..." />
+                                  <CommandEmpty>No unit found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {units.map((unit) => (
+                                      <CommandItem
+                                        key={unit.id}
+                                        onSelect={() => field.onChange(unit.id)}
+                                      >
+                                        {unit.unitName} ({unit.unitSymbol})
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>

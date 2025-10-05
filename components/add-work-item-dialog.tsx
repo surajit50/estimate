@@ -213,12 +213,40 @@ export default function AddWorkItemDialog({
             </div>
             <div>
               <Label>Unit</Label>
-              <select {...form.register("unitId")}>
-                <option value="">Select Unit</option>
-                {units?.map((u) => (
-                  <option key={u.id} value={u.id}>{u.unitName}</option>
-                ))}
-              </select>
+              <input type="hidden" {...form.register("unitId")}/>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" className="w-full justify-between">
+                    {unitId ? (
+                      (() => {
+                        const selected = units.find((u) => u.id === unitId)
+                        return selected ? `${selected.unitName} (${selected.unitSymbol})` : "Select Unit"
+                      })()
+                    ) : (
+                      "Select Unit"
+                    )}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search unit name or symbol..." />
+                    <CommandEmpty>No unit found.</CommandEmpty>
+                    <CommandGroup>
+                      {units?.map((u) => (
+                        <CommandItem
+                          key={u.id}
+                          onSelect={() => {
+                            form.setValue("unitId", u.id)
+                          }}
+                        >
+                          {u.unitName} ({u.unitSymbol})
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="flex gap-2">
