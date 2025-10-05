@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Plus, Trash2 } from "lucide-react"
+import { Loader2, Plus } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 
 import type { WorkItemWithUnit, UnitMasterType, RateLibraryType } from "@/lib/types"
@@ -58,12 +58,12 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
     },
   })
 
-  const { fields: subItemFields, append: appendSubItem, remove: removeSubItem } = useFieldArray({ 
+  const { fields: subItemFields, append: appendSubItem } = useFieldArray({ 
     control: form.control, 
     name: "subItems" 
   })
 
-  const { fields: subCategoryFields, append: appendSubCategory, remove: removeSubCategory } = useFieldArray({ 
+  const { fields: subCategoryFields, append: appendSubCategory } = useFieldArray({ 
     control: form.control, 
     name: "subCategories" 
   })
@@ -136,40 +136,62 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
 
   const watch = form.watch
   const watchedRate = watch("rate")
+  const watchedUnitId = watch("unitId")
   const watchedSubItems = watch("subItems")
   const watchedSubCategories = watch("subCategories")
+
+  const selectedUnitSymbol = React.useMemo(() => {
+    return units.find((u) => u.id === watchedUnitId)?.unitSymbol || ""
+  }, [units, watchedUnitId])
+
+  const calculateSubItemQuantity = React.useCallback((subItem: any, unitSymbol: string) => {
+    const n = Number(subItem?.nos) || 0
+    const l = Number(subItem?.length) || 0
+    const b = Number(subItem?.breadth) || 0
+    const d = Number(subItem?.depth) || 0
+
+    switch (unitSymbol) {
+      case "nos":
+        return n
+      case "m":
+        return n * l
+      case "m2":
+        return n * l * b
+      case "m3":
+        return n * l * b * d
+      case "kg":
+      case "bag":
+      case "mt":
+        return n
+      default: {
+        const hasAnyDim = l > 0 || b > 0 || d > 0
+        const dims = (l || 1) * (b || 1) * (d || 1)
+        return hasAnyDim ? (n > 0 ? n * dims : dims) : n
+      }
+    }
+  }, [])
 
   const calculatedQuantity = React.useMemo(() => {
     let totalQuantity = 0
 
-    // Calculate from direct sub-items
     if (watchedSubItems && watchedSubItems.length > 0) {
       totalQuantity += watchedSubItems.reduce((sum: number, item: any) => {
-        const nos = Number(item.nos) || 0
-        const length = Number(item.length) || 0
-        const breadth = Number(item.breadth) || 0
-        const depth = Number(item.depth) || 0
-        return sum + nos * length * breadth * depth
+        return sum + calculateSubItemQuantity(item, selectedUnitSymbol)
       }, 0)
     }
 
-    // Calculate from sub-categories
     if (watchedSubCategories && watchedSubCategories.length > 0) {
       watchedSubCategories.forEach((category: any) => {
         if (category.subItems && category.subItems.length > 0) {
           totalQuantity += category.subItems.reduce((sum: number, item: any) => {
-            const nos = Number(item.nos) || 0
-            const length = Number(item.length) || 0
-            const breadth = Number(item.breadth) || 0
-            const depth = Number(item.depth) || 0
-            return sum + nos * length * breadth * depth
+            return sum + calculateSubItemQuantity(item, selectedUnitSymbol)
           }, 0)
         }
       })
     }
 
     return totalQuantity
-  }, [watchedSubItems, watchedSubCategories])
+  }, [watchedSubItems, watchedSubCategories, selectedUnitSymbol, calculateSubItemQuantity])
 
   const calculatedAmount = React.useMemo(() => {
     const r = Number(watchedRate) || 0
@@ -202,7 +224,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
             length: s.length,
             breadth: s.breadth,
             depth: s.depth,
-            quantity: s.nos * s.length * s.breadth * s.depth,
+            quantity: calculateSubItemQuantity(s, selectedUnit?.unitSymbol || ""),
             unitSymbol: selectedUnit?.unitSymbol || "",
           })),
           subCategories: (values.subCategories || []).map((category) => ({
@@ -216,7 +238,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
               length: s.length,
               breadth: s.breadth,
               depth: s.depth,
-              quantity: s.nos * s.length * s.breadth * s.depth,
+              quantity: calculateSubItemQuantity(s, selectedUnit?.unitSymbol || ""),
               unitSymbol: selectedUnit?.unitSymbol || "",
             })),
           })),
@@ -408,17 +430,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                               </FormItem>
                             )}
                           />
-                          {subCategoryFields.length > 1 && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeSubCategory(categoryIndex)}
-                              className="shrink-0 mt-7"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          )}
+                          {/* Remove action disabled in dialog */}
                         </div>
 
                         <FormField
@@ -472,19 +484,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                                     </FormItem>
                                   )}
                                 />
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    const currentSubItems = form.getValues(`subCategories.${categoryIndex}.subItems`) || []
-                                    const newSubItems = currentSubItems.filter((_: any, idx: number) => idx !== subItemIndex)
-                                    form.setValue(`subCategories.${categoryIndex}.subItems`, newSubItems)
-                                  }}
-                                  className="shrink-0 mt-6"
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
+                                {/* Remove action disabled in dialog */}
                               </div>
 
                               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -624,17 +624,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                               </FormItem>
                             )}
                           />
-                          {subItemFields.length > 1 && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeSubItem(index)}
-                              className="shrink-0 mt-7"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          )}
+                          {/* Remove action disabled in dialog */}
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -717,13 +707,10 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                           <div className="flex flex-col justify-end">
                             <FormLabel className="text-xs">Sub-total</FormLabel>
                             <p className="text-sm font-medium text-primary py-2">
-                              {(
-                                (Number(watchedSubItems?.[index]?.nos) || 0) *
-                                (Number(watchedSubItems?.[index]?.length) || 0) *
-                                (Number(watchedSubItems?.[index]?.breadth) || 0) *
-                                (Number(watchedSubItems?.[index]?.depth) || 0)
-                              ).toFixed(3)}{" "}
-                              m³
+                              {(() => {
+                                const sub = watchedSubItems?.[index]
+                                return calculateSubItemQuantity(sub, selectedUnitSymbol).toFixed(3)
+                              })()} {selectedUnitSymbol}
                             </p>
                           </div>
                         </div>
@@ -738,7 +725,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Quantity</p>
-                    <p className="text-2xl font-bold text-primary">{calculatedQuantity.toFixed(3)} m³</p>
+                    <p className="text-2xl font-bold text-primary">{calculatedQuantity.toFixed(3)} {selectedUnitSymbol}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Amount</p>
