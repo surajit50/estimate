@@ -58,7 +58,7 @@ interface AddWorkItemDialogProps {
   nextItemNo: number
 }
 
-export function AddWorkItemDialog({
+export default function AddWorkItemDialog({
   open,
   onOpenChange,
   onAdd,
