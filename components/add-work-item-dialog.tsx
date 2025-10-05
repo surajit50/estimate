@@ -104,7 +104,7 @@ export default function AddWorkItemDialog({
   const selectedUnitId = form.watch("unitId")
 
   const selectedUnit = units.find((u) => u.id === selectedUnitId)
-  const unitSymbol = selectedUnit?.unitSymbol || "m³"
+  const unitSymbol = selectedUnit?.unitSymbol || ""
 
   // Derived UI flags (from field arrays)
   const hasDirectSubItems = subItemFields.length > 0
@@ -127,10 +127,10 @@ export default function AddWorkItemDialog({
   // Helper to detect required dimensions based on unit symbol (Nos=0D, m=1D, m²=2D, m³=3D)
   const getRequiredDims = React.useCallback((symbol?: string): 0 | 1 | 2 | 3 => {
     const s = (symbol || "").toLowerCase()
+    if (!s) return 1 // safe default (linear) when unknown, we also have inference fallback below
     if (s === "no" || s.includes("nos") || s.includes("pcs") || s.includes("piece")) return 0
     if (s.includes("³") || s.includes("m3") || s.includes("cu") || s.includes("cubic") || /\b3\b/.test(s)) return 3
     if (s.includes("²") || s.includes("m2") || s.includes("sq") || s.includes("square") || /\b2\b/.test(s)) return 2
-    // default to linear (1D) if unknown
     return 1
   }, [])
 
@@ -141,35 +141,49 @@ export default function AddWorkItemDialog({
     return Number.isFinite(n) ? n : fallback
   }, [])
 
+  // New: infer dims from provided positive dimension fields when unit is not selected
+  const inferDimsFromSubItem = React.useCallback((subItem: any): 0 | 1 | 2 | 3 => {
+    const len = Number(subItem?.length)
+    const brd = Number(subItem?.breadth)
+    const dep = Number(subItem?.depth)
+    const dims = [len, brd, dep].filter((n) => Number.isFinite(n) && n > 0).length
+    return Math.max(0, Math.min(3, dims)) as 0 | 1 | 2 | 3
+  }, [])
+
   // Optimized calculation function
   const calculateSubItemQuantity = React.useCallback(
     (subItem: any): number => {
       if (!subItem) return 0
 
-      const nos = Math.max(0, parseNumber(subItem.nos, 1) ?? 1)
-      const length = parseNumber(subItem.length)
-      const breadth = parseNumber(subItem.breadth)
-      const depth = parseNumber(subItem.depth)
+      const nos = Math.max(0, subItem?.nos === "" || subItem?.nos == null ? 1 : Number(subItem.nos) || 1)
+      const length = subItem?.length === "" || subItem?.length == null ? undefined : Number(subItem.length)
+      const breadth = subItem?.breadth === "" || subItem?.breadth == null ? undefined : Number(subItem.breadth)
+      const depth = subItem?.depth === "" || subItem?.depth == null ? undefined : Number(subItem.depth)
 
-      const requiredDims = getRequiredDims(unitSymbol)
       const dimsProvided = [length, breadth, depth].filter(
         (n) => typeof n === "number" && Number.isFinite(n) && n > 0,
       ) as number[]
 
+      // Determine how many dimensions to multiply:
+      // - If a unit is selected, use its requirement strictly
+      // - If no unit selected, infer from provided inputs
+      const hasUnit = !!unitSymbol
+      const requiredDims = hasUnit ? getRequiredDims(unitSymbol) : inferDimsFromSubItem(subItem)
+
       // Nos-only units
       if (requiredDims === 0) return nos
 
-      // No dimensions provided for dimensional units → 0
+      // If no dims provided, nothing to multiply
       if (dimsProvided.length === 0) return 0
 
-      // If not enough dimensions for the unit, treat as incomplete → 0
-      if (dimsProvided.length < requiredDims) return 0
+      // When unit selected: require all needed dims; when unit missing: multiply what is provided
+      if (hasUnit && dimsProvided.length < requiredDims) return 0
 
-      // Use the first N required dimensions
-      const product = dimsProvided.slice(0, requiredDims).reduce((acc, n) => acc * n, 1)
+      const dimsToUse = hasUnit ? dimsProvided.slice(0, requiredDims) : dimsProvided
+      const product = dimsToUse.reduce((acc, n) => acc * n, 1)
       return nos * product
     },
-    [parseNumber, unitSymbol, getRequiredDims],
+    [unitSymbol, getRequiredDims, inferDimsFromSubItem],
   )
 
   // Real-time calculated quantity
@@ -698,7 +712,7 @@ export default function AddWorkItemDialog({
                                   <div className="flex flex-col justify-end">
                                     <FormLabel className="text-xs">Sub-total</FormLabel>
                                     <p className="text-sm font-medium text-primary py-2">
-                                      {getSubItemQuantity(subItem).toFixed(3)} {unitSymbol}
+                                      {getSubItemQuantity(subItem).toFixed(3)} {unitSymbol || ""}
                                     </p>
                                   </div>
                                 </div>
@@ -858,7 +872,7 @@ export default function AddWorkItemDialog({
                             <div className="flex flex-col justify-end">
                               <FormLabel className="text-xs">Sub-total</FormLabel>
                               <p className="text-sm font-medium text-primary py-2">
-                                {getSubItemQuantity(subItem).toFixed(3)} {unitSymbol}
+                                {getSubItemQuantity(subItem).toFixed(3)} {unitSymbol || ""}
                               </p>
                             </div>
                           </div>
@@ -875,7 +889,7 @@ export default function AddWorkItemDialog({
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Quantity</p>
                     <p className="text-2xl font-bold text-primary">
-                      {calculatedQuantity.toFixed(3)} {unitSymbol}
+                      {calculatedQuantity.toFixed(3)} {unitSymbol || ""}
                     </p>
                   </div>
                   <div>
