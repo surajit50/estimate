@@ -79,12 +79,20 @@ export function AddWorkItemDialog({
     },
   })
 
-  const { fields: subItemFields, append: appendSubItem, remove: removeSubItem } = useFieldArray({
+  const {
+    fields: subItemFields,
+    append: appendSubItem,
+    remove: removeSubItem,
+  } = useFieldArray({
     control: form.control,
     name: "subItems",
   })
 
-  const { fields: subCategoryFields, append: appendSubCategory, remove: removeSubCategory } = useFieldArray({
+  const {
+    fields: subCategoryFields,
+    append: appendSubCategory,
+    remove: removeSubCategory,
+  } = useFieldArray({
     control: form.control,
     name: "subCategories",
   })
@@ -116,25 +124,53 @@ export function AddWorkItemDialog({
     }
   }, [open, form])
 
+  // Helper to detect required dimensions based on unit symbol (Nos=0D, m=1D, m²=2D, m³=3D)
+  const getRequiredDims = React.useCallback((symbol?: string): 0 | 1 | 2 | 3 => {
+    const s = (symbol || "").toLowerCase()
+    if (s === "no" || s.includes("nos") || s.includes("pcs") || s.includes("piece")) return 0
+    if (s.includes("³") || s.includes("m3") || s.includes("cu") || s.includes("cubic") || /\b3\b/.test(s)) return 3
+    if (s.includes("²") || s.includes("m2") || s.includes("sq") || s.includes("square") || /\b2\b/.test(s)) return 2
+    // default to linear (1D) if unknown
+    return 1
+  }, [])
+
   // Robust parse helper: treat empty/undefined as fallback (so partial inputs don't zero everything)
-  const parseNumber = React.useCallback((value: any, fallback = 1) => {
+  const parseNumber = React.useCallback((value: any, fallback?: number) => {
     if (value === undefined || value === null || value === "") return fallback
     const n = Number(value)
     return Number.isFinite(n) ? n : fallback
   }, [])
 
   // Optimized calculation function
-  const calculateSubItemQuantity = React.useCallback((subItem: any): number => {
-    if (!subItem) return 0
+  const calculateSubItemQuantity = React.useCallback(
+    (subItem: any): number => {
+      if (!subItem) return 0
 
-    // nos default to 1 if missing (so e.g., a single length entry still counts)
-    const nos = parseNumber(subItem.nos, 1)
-    const length = parseNumber(subItem.length, 1)
-    const breadth = parseNumber(subItem.breadth, 1)
-    const depth = parseNumber(subItem.depth, 1)
+      const nos = Math.max(0, parseNumber(subItem.nos, 1) ?? 1)
+      const length = parseNumber(subItem.length)
+      const breadth = parseNumber(subItem.breadth)
+      const depth = parseNumber(subItem.depth)
 
-    return nos * length * breadth * depth
-  }, [parseNumber])
+      const requiredDims = getRequiredDims(unitSymbol)
+      const dimsProvided = [length, breadth, depth].filter(
+        (n) => typeof n === "number" && Number.isFinite(n) && n > 0,
+      ) as number[]
+
+      // Nos-only units
+      if (requiredDims === 0) return nos
+
+      // No dimensions provided for dimensional units → 0
+      if (dimsProvided.length === 0) return 0
+
+      // If not enough dimensions for the unit, treat as incomplete → 0
+      if (dimsProvided.length < requiredDims) return 0
+
+      // Use the first N required dimensions
+      const product = dimsProvided.slice(0, requiredDims).reduce((acc, n) => acc * n, 1)
+      return nos * product
+    },
+    [parseNumber, unitSymbol, getRequiredDims],
+  )
 
   // Real-time calculated quantity
   const calculatedQuantity = React.useMemo(() => {
@@ -167,9 +203,12 @@ export function AddWorkItemDialog({
   }, [calculatedQuantity, watchedRate])
 
   // Get individual sub-item quantity for display (handles undefined safely)
-  const getSubItemQuantity = React.useCallback((subItem: any): number => {
-    return calculateSubItemQuantity(subItem)
-  }, [calculateSubItemQuantity])
+  const getSubItemQuantity = React.useCallback(
+    (subItem: any): number => {
+      return calculateSubItemQuantity(subItem)
+    },
+    [calculateSubItemQuantity],
+  )
 
   // Rate selection handler
   const handleRateSelect = (rateId: string) => {
@@ -203,10 +242,7 @@ export function AddWorkItemDialog({
   // Add sub-item to a category (use setValue with options so watchers fire)
   const addSubItemToCategory = (categoryIndex: number) => {
     const currentSubItems = form.getValues(`subCategories.${categoryIndex}.subItems`) || []
-    const newSubItems = [
-      ...currentSubItems,
-      { description: "", nos: 1, length: 1, breadth: 1, depth: 1 },
-    ]
+    const newSubItems = [...currentSubItems, { description: "", nos: 1, length: 1, breadth: 1, depth: 1 }]
     form.setValue(`subCategories.${categoryIndex}.subItems`, newSubItems, { shouldValidate: true, shouldDirty: true })
   }
 
@@ -219,8 +255,10 @@ export function AddWorkItemDialog({
 
   // Form validation state
   const isFormValid = React.useMemo(() => {
-    const hasStructure = (Array.isArray(watchedSubItems) && watchedSubItems.length > 0) ||
-      (Array.isArray(watchedSubCategories) && watchedSubCategories.some((c: any) => Array.isArray(c.subItems) && c.subItems.length > 0))
+    const hasStructure =
+      (Array.isArray(watchedSubItems) && watchedSubItems.length > 0) ||
+      (Array.isArray(watchedSubCategories) &&
+        watchedSubCategories.some((c: any) => Array.isArray(c.subItems) && c.subItems.length > 0))
     const hasPositiveQuantity = calculatedQuantity > 0
     const hasDescription = (form.getValues("description") || "").toString().trim().length > 0
     const hasUnit = (form.getValues("unitId") || "").toString().length > 0
@@ -477,7 +515,7 @@ export function AddWorkItemDialog({
 
                   <div className="space-y-6">
                     {subCategoryFields.map((category, categoryIndex) => {
-                      const categorySubItems = (watchedSubCategories[categoryIndex]?.subItems) || []
+                      const categorySubItems = watchedSubCategories[categoryIndex]?.subItems || []
 
                       return (
                         <div key={category.id} className="p-4 bg-white rounded-lg border shadow-sm">
@@ -543,7 +581,9 @@ export function AddWorkItemDialog({
                                 <div className="flex items-start gap-2">
                                   <FormField
                                     control={form.control}
-                                    name={`subCategories.${categoryIndex}.subItems.${subItemIndex}.description` as const}
+                                    name={
+                                      `subCategories.${categoryIndex}.subItems.${subItemIndex}.description` as const
+                                    }
                                     render={({ field }) => (
                                       <FormItem className="flex-1">
                                         <FormLabel className="text-xs">Sub-item Description</FormLabel>
@@ -841,7 +881,8 @@ export function AddWorkItemDialog({
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Amount</p>
                     <p className="text-2xl font-bold text-primary">
-                      ₹{calculatedAmount.toLocaleString("en-IN", {
+                      ₹
+                      {calculatedAmount.toLocaleString("en-IN", {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}
@@ -876,10 +917,7 @@ export function AddWorkItemDialog({
                 >
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={form.formState.isSubmitting || !isFormValid}
-                >
+                <Button type="submit" disabled={form.formState.isSubmitting || !isFormValid}>
                   {form.formState.isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Add Work Item
                 </Button>
