@@ -3,12 +3,17 @@ import { DashboardHeader } from "@/components/dashboard-header"
 import { RatesTable } from "@/components/rates-table"
 
 export default async function AdminRatesPage() {
-  const rates = await prisma.rateLibrary.findMany({
-    include: {
-      unit: true,
-    },
-    orderBy: { createdAt: "desc" },
-  })
+  const [rates, units] = await Promise.all([
+    prisma.rateLibrary.findMany({
+      include: {
+        unit: true,
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.unitMaster.findMany({
+      orderBy: { createdAt: "desc" },
+    }),
+  ])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
@@ -22,7 +27,7 @@ export default async function AdminRatesPage() {
             </p>
           </div>
           <div className="animate-fade-in">
-            <RatesTable rates={rates} />
+            <RatesTable rates={rates} units={units} />
           </div>
         </div>
       </main>
