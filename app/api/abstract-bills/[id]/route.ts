@@ -3,10 +3,11 @@ import { prisma } from "@/lib/db"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
+
 ) {
   try {
-    const { id } = params
+    const { id } = context.params
     const abstractBill = await prisma.abstractBill.findUnique({
       where: { id },
       include: {
