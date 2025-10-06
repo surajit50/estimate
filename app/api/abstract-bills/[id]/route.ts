@@ -3,11 +3,12 @@ import { prisma } from "@/lib/db"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const abstractBill = await prisma.abstractBill.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         measurementBook: {
           include: {
@@ -50,7 +51,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json()
@@ -70,8 +71,9 @@ export async function PUT(
       return sum + (item.quantity * item.rate)
     }, 0)
 
+    const { id } = await params
     const abstractBill = await prisma.abstractBill.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         billNo,
         billDate: billDate ? new Date(billDate) : undefined,
@@ -110,13 +112,13 @@ export async function PUT(
     if (items) {
       // Delete existing items
       await prisma.abstractBillItem.deleteMany({
-        where: { abstractBillId: params.id },
+        where: { abstractBillId: id },
       })
 
       // Create new items
       await prisma.abstractBillItem.createMany({
         data: items.map((item: any) => ({
-          abstractBillId: params.id,
+          abstractBillId: id,
           measurementEntryId: item.measurementEntryId,
           description: item.description,
           unitId: item.unitId,
@@ -128,7 +130,7 @@ export async function PUT(
 
       // Fetch updated bill with items
       const updatedBill = await prisma.abstractBill.findUnique({
-        where: { id: params.id },
+        where: { id },
         include: {
           measurementBook: {
             include: {
@@ -165,11 +167,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     await prisma.abstractBill.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({ message: "Abstract bill deleted successfully" })

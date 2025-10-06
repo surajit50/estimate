@@ -3,11 +3,12 @@ import { prisma } from "@/lib/db"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const entries = await prisma.measurementEntry.findMany({
-      where: { measurementBookId: params.id },
+      where: { measurementBookId: id },
       include: {
         unit: true,
       },
@@ -26,7 +27,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json()
@@ -50,9 +51,11 @@ export async function POST(
       )
     }
 
+    const { id } = await params
+    
     // Verify measurement book exists
     const measurementBook = await prisma.measurementBook.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!measurementBook) {
@@ -76,7 +79,7 @@ export async function POST(
 
     const entry = await prisma.measurementEntry.create({
       data: {
-        measurementBookId: params.id,
+        measurementBookId: id,
         entryDate: new Date(entryDate),
         pageNo,
         itemNo,

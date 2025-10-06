@@ -3,11 +3,12 @@ import { prisma } from "@/lib/db"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string; entryId: string } }
+  { params }: { params: Promise<{ id: string; entryId: string }> }
 ) {
   try {
+    const { entryId } = await params
     const entry = await prisma.measurementEntry.findUnique({
-      where: { id: params.entryId },
+      where: { id: entryId },
       include: {
         unit: true,
       },
@@ -32,7 +33,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; entryId: string } }
+  { params }: { params: Promise<{ id: string; entryId: string }> }
 ) {
   try {
     const body = await request.json()
@@ -49,8 +50,9 @@ export async function PUT(
       remarks,
     } = body
 
+    const { entryId } = await params
     const entry = await prisma.measurementEntry.update({
-      where: { id: params.entryId },
+      where: { id: entryId },
       data: {
         entryDate: entryDate ? new Date(entryDate) : undefined,
         pageNo,
@@ -80,11 +82,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; entryId: string } }
+  { params }: { params: Promise<{ id: string; entryId: string }> }
 ) {
   try {
+    const { entryId } = await params
     await prisma.measurementEntry.delete({
-      where: { id: params.entryId },
+      where: { id: entryId },
     })
 
     return NextResponse.json({ message: "Measurement entry deleted successfully" })
