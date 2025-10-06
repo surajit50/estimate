@@ -5,7 +5,7 @@ interface PageProps {
   params: { id: string }
 }
 
-export default async function AbstractBillDownloadPage({ params }: PageProps) {
+export default async function AbstractBillDownloadPage({ params }: { params: { id: string } }) {
   const { id } = params
 
   const abstractBill = await prisma.abstractBill.findUnique({
