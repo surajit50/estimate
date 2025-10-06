@@ -21,6 +21,7 @@ import {
 import { MoreHorizontal, Edit, Trash2, Plus } from "lucide-react"
 import { DeleteMeasurementEntryDialog } from "./delete-measurement-entry-dialog"
 import { AddMeasurementEntryDialog } from "./add-measurement-entry-dialog"
+import Link from "next/link"
 
 interface MeasurementEntry {
   id: string
@@ -92,10 +93,12 @@ export function MeasurementEntriesTable({
                 Add measurement entries to track work progress and generate bills.
               </p>
             </div>
-            <Button onClick={() => setAddDialogOpen(true)}>
+            <Link href={`/measurement-books/${measurementBookId}/add-entry`}>
+              <Button>
               <Plus className="h-4 w-4 mr-2" />
               Add Entry
             </Button>
+            </Link>
           </div>
         </CardContent>
       </Card>
@@ -108,10 +111,12 @@ export function MeasurementEntriesTable({
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             Measurement Entries
-            <Button size="sm" onClick={() => setAddDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Entry
-            </Button>
+            <Link href={`/measurement-books/${measurementBookId}/add-entry`}>
+              <Button size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Entry
+              </Button>
+            </Link>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -190,17 +195,9 @@ export function MeasurementEntriesTable({
         onConfirm={handleDeleteConfirm}
       />
 
-      <div>{addDialogOpen && (
-        <AddMeasurementEntryDialog
-          open={addDialogOpen}
-          onOpenChange={setAddDialogOpen}
-          measurementBookId={measurementBookId}
-          onSuccess={() => {
-            // Refresh the page or refetch data
-            window.location.reload()
-          }}
-        />
-      )}</div>
+    
+       
+      
       
     </>
   )
