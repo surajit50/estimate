@@ -92,10 +92,7 @@ export function MeasurementEntriesTable({
                 Add measurement entries to track work progress and generate bills.
               </p>
             </div>
-            <Button onClick={() => {
-              console.log("Add Entry button clicked, opening dialog...")
-              setAddDialogOpen(true)
-            }}>
+            <Button onClick={() => setAddDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Add Entry
             </Button>
@@ -195,13 +192,9 @@ export function MeasurementEntriesTable({
 
       <AddMeasurementEntryDialog
         open={addDialogOpen}
-        onOpenChange={(open) => {
-          console.log("Dialog open state changed:", open)
-          setAddDialogOpen(open)
-        }}
+        onOpenChange={setAddDialogOpen}
         measurementBookId={measurementBookId}
         onSuccess={() => {
-          console.log("Entry created successfully, refreshing page...")
           // Refresh the page or refetch data
           window.location.reload()
         }}
