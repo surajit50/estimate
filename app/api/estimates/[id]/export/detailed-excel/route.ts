@@ -20,9 +20,9 @@ export async function OPTIONS() {
   })
 }
 
-export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, context: { params: { id: string } }) {
   try {
-    const { id } = await context.params
+    const { id } = context.params
     const estimate = await prisma.estimate.findUnique({
       where: { id },
       include: {

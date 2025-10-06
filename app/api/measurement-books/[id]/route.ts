@@ -3,10 +3,10 @@ import { prisma } from "@/lib/db"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params
+    const { id } = params
     const measurementBook = await prisma.measurementBook.findUnique({
       where: { id },
       include: {
@@ -58,13 +58,13 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     const body = await request.json()
     const { title, description, location, contractor, engineer, status } = body
 
-    const { id } = await params
+    const { id } = params
     const measurementBook = await prisma.measurementBook.update({
       where: { id },
       data: {
@@ -106,10 +106,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params
+    const { id } = params
     await prisma.measurementBook.delete({
       where: { id },
     })

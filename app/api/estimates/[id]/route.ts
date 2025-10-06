@@ -1,9 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 
-export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, context: { params: { id: string } }) {
   try {
-    const { id } = await context.params
+    const { id } = context.params
     const estimate = await prisma.estimate.findUnique({
       where: { id },
       include: {
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   }
 }
 
-export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function PUT(request: NextRequest, context: { params: { id: string } }) {
   try {
     const body = await request.json()
     const {
@@ -50,7 +50,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       cessPercent,
     } = body
 
-    const { id } = await context.params
+    const { id } = context.params
     const estimate = await prisma.estimate.update({
       where: { id },
       data: {
@@ -72,9 +72,9 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
   }
 }
 
-export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: NextRequest, context: { params: { id: string } }) {
   try {
-    const { id } = await context.params
+    const { id } = context.params
     await prisma.estimate.delete({
       where: { id },
     })

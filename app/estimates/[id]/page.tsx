@@ -16,8 +16,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-export default async function ViewEstimatePage(context: { params: Promise<{ id: string }> }) {
-  const { id } = await context.params
+export default async function ViewEstimatePage({ params }: { params: { id: string } }) {
+  const { id } = params
   const estimate = await prisma.estimate.findUnique({
     where: { id },
     include: {

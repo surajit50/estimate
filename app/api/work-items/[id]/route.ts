@@ -1,11 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 
-export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function PUT(request: NextRequest, context: { params: { id: string } }) {
   try {
     const body = await request.json()
     const { pageRef, itemRef, description, unitId, rate, length, width, height, quantity, amount, subItems, subCategories } = body
-    const { id } = await context.params
+    const { id } = context.params
 
     // Delete existing sub-items and sub-categories
     await prisma.subWorkItem.deleteMany({
@@ -78,9 +78,9 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
   }
 }
 
-export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: NextRequest, context: { params: { id: string } }) {
   try {
-    const { id } = await context.params
+    const { id } = context.params
     await prisma.workItem.delete({
       where: { id },
     })

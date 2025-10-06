@@ -3,10 +3,10 @@ import { prisma } from "@/lib/db"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; entryId: string }> }
+  { params }: { params: { id: string; entryId: string } }
 ) {
   try {
-    const { entryId } = await params
+    const { entryId } = params
     const entry = await prisma.measurementEntry.findUnique({
       where: { id: entryId },
       include: {
@@ -33,7 +33,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; entryId: string }> }
+  { params }: { params: { id: string; entryId: string } }
 ) {
   try {
     const body = await request.json()
@@ -50,7 +50,7 @@ export async function PUT(
       remarks,
     } = body
 
-    const { entryId } = await params
+    const { entryId } = params
     const entry = await prisma.measurementEntry.update({
       where: { id: entryId },
       data: {
@@ -82,10 +82,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; entryId: string }> }
+  { params }: { params: { id: string; entryId: string } }
 ) {
   try {
-    const { entryId } = await params
+    const { entryId } = params
     await prisma.measurementEntry.delete({
       where: { id: entryId },
     })
