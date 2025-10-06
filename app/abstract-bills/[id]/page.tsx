@@ -15,11 +15,7 @@ import {
 } from "@/components/ui/table"
 import { ArrowLeft } from "lucide-react"
 
-interface PageProps {
-  params: { id: string }
-}
-
-export default async function AbstractBillDetailPage({ params }: PageProps) {
+export default async function AbstractBillDetailPage({ params }: { params: { id: string } }) {
   const { id } = params
 
   const abstractBill = await prisma.abstractBill.findUnique({
