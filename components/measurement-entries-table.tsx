@@ -190,15 +190,18 @@ export function MeasurementEntriesTable({
         onConfirm={handleDeleteConfirm}
       />
 
-      <AddMeasurementEntryDialog
-        open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
-        measurementBookId={measurementBookId}
-        onSuccess={() => {
-          // Refresh the page or refetch data
-          window.location.reload()
-        }}
-      />
+      <div>{addDialogOpen && (
+        <AddMeasurementEntryDialog
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          measurementBookId={measurementBookId}
+          onSuccess={() => {
+            // Refresh the page or refetch data
+            window.location.reload()
+          }}
+        />
+      )}</div>
+      
     </>
   )
 }
