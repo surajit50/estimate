@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/db"
 import { notFound } from "next/navigation"
 
-interface PageProps {
+export default async function AbstractBillDownloadPage({
+  params,
+}: {
   params: { id: string }
-}
-
-export default async function AbstractBillDownloadPage({ params }: { params: { id: string } }) {
+}) {
   const { id } = params
 
   const abstractBill = await prisma.abstractBill.findUnique({
