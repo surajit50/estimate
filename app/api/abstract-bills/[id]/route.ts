@@ -3,11 +3,9 @@ import { prisma } from "@/lib/db"
 
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
-
-) {
+   context: { params: { id: string } }) {
   try {
-    const { id } = context.params
+     const { id } = context.params
     const abstractBill = await prisma.abstractBill.findUnique({
       where: { id },
       include: {
@@ -52,8 +50,8 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  context: { params: { id: string } }) 
+   {
   try {
     const body = await request.json()
     const {
@@ -72,7 +70,7 @@ export async function PUT(
       return sum + (item.quantity * item.rate)
     }, 0)
 
-    const { id } = params
+    const { id } = context.params
     const abstractBill = await prisma.abstractBill.update({
       where: { id },
       data: {
@@ -168,10 +166,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+   context: { params: { id: string } }
 ) {
   try {
-    const { id } = params
+    const { id } = context.params
     await prisma.abstractBill.delete({
       where: { id },
     })
