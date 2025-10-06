@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, DollarSign, Ruler, Sun, Moon } from "lucide-react"
+import { PlusCircle, DollarSign, Ruler, Sun, Moon, BookOpen, FileText } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 
@@ -50,6 +50,18 @@ export function DashboardHeader() {
               <Button variant="outline" size="default" className="group">
                 <DollarSign className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
                 Rate Library
+              </Button>
+            </Link>
+            <Link href="/measurement-books">
+              <Button variant="outline" size="default" className="group">
+                <BookOpen className="h-4 w-4 mr-2 group-hover:rotate-12 transition-transform duration-200" />
+                Measurement Books
+              </Button>
+            </Link>
+            <Link href="/abstract-bills">
+              <Button variant="outline" size="default" className="group">
+                <FileText className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
+                Abstract Bills
               </Button>
             </Link>
             <Link href="/estimates/new">

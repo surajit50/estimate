@@ -11,20 +11,21 @@ datasource db {
 }
 
 model Estimate {
-  id            String     @id @default(auto()) @map("_id") @db.ObjectId
-  title         String
-  category      String
-  description   String?
-  location      String?
-  activityCode  String?
-  parameters    Json?      // Store project-specific parameters like dimensions, slopes, etc.
-  cgstPercent   Float      @default(9.0)
-  sgstPercent   Float      @default(9.0)
-  cessPercent   Float      @default(1.0)
-  contingency   Float      @default(0.0)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  workItems     WorkItem[]
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
+  title           String
+  category        String
+  description     String?
+  location        String?
+  activityCode    String?
+  parameters      Json?            // Store project-specific parameters like dimensions, slopes, etc.
+  cgstPercent     Float            @default(9.0)
+  sgstPercent     Float            @default(9.0)
+  cessPercent     Float            @default(1.0)
+  contingency     Float            @default(0.0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  workItems       WorkItem[]
+  measurementBooks MeasurementBook[]
 }
 
 model WorkItem {
@@ -84,12 +85,14 @@ model SubWorkItem {
 }
 
 model UnitMaster {
-  id          String     @id @default(auto()) @map("_id") @db.ObjectId
-  unitName    String     @unique
-  unitSymbol  String
-  createdAt   DateTime   @default(now())
-  workItems   WorkItem[]
-  rateLibrary RateLibrary[]
+  id                String             @id @default(auto()) @map("_id") @db.ObjectId
+  unitName          String             @unique
+  unitSymbol        String
+  createdAt         DateTime           @default(now())
+  workItems         WorkItem[]
+  rateLibrary       RateLibrary[]
+  measurementEntries MeasurementEntry[]
+  abstractBillItems  AbstractBillItem[]
 }
 
 model RateLibrary {
@@ -103,4 +106,87 @@ model RateLibrary {
   updatedAt    DateTime   @updatedAt
 
   @@index([unitId])
+}
+
+model MeasurementBook {
+  id            String      @id @default(auto()) @map("_id") @db.ObjectId
+  estimateId    String      @db.ObjectId
+  estimate      Estimate    @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  location      String?
+  contractor    String?
+  engineer      String?
+  status        String      @default("draft") // draft, submitted, approved, rejected
+  submittedAt   DateTime?
+  approvedAt    DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  entries       MeasurementEntry[]
+  abstractBills AbstractBill[]
+
+  @@index([estimateId])
+}
+
+model MeasurementEntry {
+  id                String         @id @default(auto()) @map("_id") @db.ObjectId
+  measurementBookId String         @db.ObjectId
+  measurementBook   MeasurementBook @relation(fields: [measurementBookId], references: [id], onDelete: Cascade)
+  entryDate         DateTime
+  pageNo            String
+  itemNo            String
+  description       String
+  unitId            String         @db.ObjectId
+  unit              UnitMaster     @relation(fields: [unitId], references: [id])
+  length            Float          @default(0)
+  width             Float          @default(0)
+  height            Float          @default(0)
+  quantity          Float
+  remarks           String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  abstractBillItems AbstractBillItem[]
+
+  @@index([measurementBookId])
+}
+
+model AbstractBill {
+  id                String         @id @default(auto()) @map("_id") @db.ObjectId
+  measurementBookId String         @db.ObjectId
+  measurementBook   MeasurementBook @relation(fields: [measurementBookId], references: [id], onDelete: Cascade)
+  billNo            String
+  billDate          DateTime
+  periodFrom        DateTime
+  periodTo          DateTime
+  contractor        String?
+  engineer          String?
+  status            String         @default("draft") // draft, submitted, approved, paid
+  submittedAt       DateTime?
+  approvedAt        DateTime?
+  paidAt            DateTime?
+  totalAmount       Float          @default(0)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  items             AbstractBillItem[]
+
+  @@index([measurementBookId])
+}
+
+model AbstractBillItem {
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  abstractBillId  String      @db.ObjectId
+  abstractBill    AbstractBill @relation(fields: [abstractBillId], references: [id], onDelete: Cascade)
+  measurementEntryId String?   @db.ObjectId
+  measurementEntry MeasurementEntry? @relation(fields: [measurementEntryId], references: [id])
+  description     String
+  unitId          String      @db.ObjectId
+  unit            UnitMaster  @relation(fields: [unitId], references: [id])
+  quantity        Float
+  rate            Float
+  amount          Float
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([abstractBillId])
+  @@index([measurementEntryId])
 }

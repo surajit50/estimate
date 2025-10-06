@@ -81,6 +81,6 @@
     "typescript": "^5"
   },
   "prisma": {
-    "seed": "node scripts/seed-hierarchical-items.js"
+    "seed": "node scripts/seed-pwd-rates.js"
   }
 }

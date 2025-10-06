@@ -47,15 +47,16 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     // Create PDF
     const doc = new jsPDF()
 
-    // Title
+    const pageWidth = doc.internal.pageSize.getWidth()
+    // Minimal centered title
     doc.setFontSize(18)
     doc.setFont("helvetica", "bold")
-    doc.text("DETAILED ESTIMATE", doc.internal.pageSize.getWidth() / 2, 20, { align: "center" })
+    doc.text("DETAILED ESTIMATE", pageWidth / 2, 20, { align: "center" })
 
     // Estimate Details
     doc.setFontSize(10)
     doc.setFont("helvetica", "normal")
-    let yPos = 35
+    let yPos = 30
 
     doc.text(`Project Title: ${estimate.title}`, 15, yPos)
     yPos += 7
@@ -74,6 +75,13 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     } else {
       yPos += 5
     }
+
+    // Separator
+    doc.setDrawColor(210)
+    doc.line(15, yPos, pageWidth - 15, yPos)
+    yPos += 6
+
+    // Drawing section removed
 
     // Detailed Work Items Table with Sub-Items
     const tableData: any[] = []
@@ -113,8 +121,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       body: tableData,
       foot: [["", "", "", "", "Grand Total:", `₹${totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`]],
       theme: "grid",
-      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: "bold" },
-      footStyles: { fillColor: [236, 240, 241], textColor: 0, fontStyle: "bold" },
+      headStyles: { fillColor: [230, 230, 230], textColor: 0, fontStyle: "bold" },
+      footStyles: { fillColor: [245, 245, 245], textColor: 0, fontStyle: "bold" },
       styles: { fontSize: 8 },
       columnStyles: {
         0: { cellWidth: 20, halign: "left" },
@@ -125,24 +133,65 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         5: { cellWidth: 30, halign: "right" },
       },
       didParseCell: (data) => {
-        // Style sub-item rows differently
-        if (data.section === "body" && data.cell.text[0]?.startsWith("  ")) {
-          data.cell.styles.fillColor = [245, 245, 245]
-          data.cell.styles.fontSize = 7
+        // Sub-items slightly shaded; main rows lightly striped
+        if (data.section === "body") {
+          const isSubItem = data.row.cells?.[0]?.text?.[0]?.startsWith("  ")
+          if (isSubItem) {
+            data.cell.styles.fillColor = [245, 245, 245]
+            data.cell.styles.fontSize = 7
+          } else if (data.row.index % 2 === 1) {
+            data.cell.styles.fillColor = [252, 252, 252]
+          }
         }
       },
     })
 
-    // Summary
-    const finalY = (doc as any).lastAutoTable.finalY + 10
-    doc.setFontSize(11)
+    // Summary with concise totals
+    const finalY = (doc as any).lastAutoTable.finalY + 8
+    const boxLeft = 15
+    const boxTop = finalY
+    const boxWidth = pageWidth - 30
+    const lineHeight = 6
+
+    // Compute taxes/charges
+    const cgst = (estimate as any).cgstPercent ?? 0
+    const sgst = (estimate as any).sgstPercent ?? 0
+    const cess = (estimate as any).cessPercent ?? 0
+    const contingency = (estimate as any).contingency ?? 0
+
+    const subtotal = totalAmount
+    const grandTotal =
+      subtotal +
+      subtotal * (Number(cgst) || 0) / 100 +
+      subtotal * (Number(sgst) || 0) / 100 +
+      subtotal * (Number(cess) || 0) / 100 +
+      subtotal * (Number(contingency) || 0) / 100
+
+    // Box (two-line summary)
+    doc.setDrawColor(200)
+    doc.rect(boxLeft, boxTop, boxWidth, lineHeight * 2)
+
+    doc.setFontSize(10)
+    doc.setFont("helvetica", "normal")
+
+    const rightX = boxLeft + boxWidth - 4
+    const money = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+
+    doc.text("Subtotal:", boxLeft + 4, boxTop + lineHeight)
+    doc.text(money(subtotal), rightX, boxTop + lineHeight, { align: "right" })
+
     doc.setFont("helvetica", "bold")
-    
-    doc.text(
-      `Estimated Project Cost: ₹${totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
-      15,
-      finalY + 7,
-    )
+    doc.text("Grand Total (incl. taxes/charges):", boxLeft + 4, boxTop + lineHeight * 2 - 1)
+    doc.text(money(grandTotal), rightX, boxTop + lineHeight * 2 - 1, { align: "right" })
+
+    // Footer page numbers
+    const pageCount = (doc as any).internal.getNumberOfPages()
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i)
+      doc.setFontSize(8)
+      doc.setTextColor(120)
+      doc.text(`Page ${i} of ${pageCount}`, pageWidth - 15, doc.internal.pageSize.getHeight() - 8, { align: "right" })
+    }
 
     // Generate PDF buffer
     const pdfBuffer = doc.output("arraybuffer")
