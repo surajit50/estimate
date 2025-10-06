@@ -1,35 +1,31 @@
 import { prisma } from "@/lib/db"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { DashboardHeader } from "@/components/dashboard-header"
 import { RatesTable } from "@/components/rates-table"
 
-export default async function RatesPage() {
-  const [rates, units] = await Promise.all([
-    prisma.rateLibrary.findMany({
-      include: {
-        unit: true,
-      },
-      orderBy: { description: "asc" },
-    }),
-    prisma.unitMaster.findMany({
-      orderBy: { unitName: "asc" },
-    }),
-  ])
+export default async function AdminRatesPage() {
+  const rates = await prisma.rateLibrary.findMany({
+    include: {
+      unit: true,
+    },
+    orderBy: { createdAt: "desc" },
+  })
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <Link href="/">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
-          </Link>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <DashboardHeader />
+      <main className="container mx-auto px-6 py-12">
+        <div className="space-y-8">
+          <div className="text-center space-y-4 animate-fade-in-up">
+            <h2 className="text-2xl font-semibold text-foreground">Rate Library</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Manage standard rates for different work items and materials
+            </p>
+          </div>
+          <div className="animate-fade-in">
+            <RatesTable rates={rates} />
+          </div>
         </div>
-        <RatesTable rates={rates} units={units} />
-      </div>
+      </main>
     </div>
   )
 }
