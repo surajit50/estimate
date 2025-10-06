@@ -10,11 +10,11 @@ import { AbstractBillsTable } from "@/components/abstract-bills-table"
 import { ArrowLeft, Edit, Calendar, MapPin, User, Building } from "lucide-react"
 
 interface MeasurementBookPageProps {
-  params: Promise<{ id: string }>
+  params: { id: string }
 }
 
 export default async function MeasurementBookPage({ params }: MeasurementBookPageProps) {
-  const { id } = await params
+  const { id } = params
   const measurementBook = await prisma.measurementBook.findUnique({
     where: { id },
     include: {

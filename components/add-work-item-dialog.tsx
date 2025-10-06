@@ -128,7 +128,7 @@ export default function AddWorkItemDialog({
   const getRequiredDims = React.useCallback((symbol?: string): 0 | 1 | 2 | 3 => {
     const s = (symbol || "").toLowerCase()
     if (!s) return 1 // safe default (linear) when unknown, we also have inference fallback below
-    if (s === "no" || s.includes("nos") || s.includes("pcs") || s.includes("piece")) return 0
+    if (s === "no" || s.includes("nos") || s.includes("pcs") || s.includes("piece") || s.includes("each")) return 0
     if (s.includes("³") || s.includes("m3") || s.includes("cu") || s.includes("cubic") || /\b3\b/.test(s)) return 3
     if (s.includes("²") || s.includes("m2") || s.includes("sq") || s.includes("square") || /\b2\b/.test(s)) return 2
     return 1
@@ -790,7 +790,7 @@ export default function AddWorkItemDialog({
                               name={`subItems.${index}.nos` as const}
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel className="text-xs">Quantity (Nos)</FormLabel>
+                                  <FormLabel className="text-xs">Nos</FormLabel>
                                   <FormControl>
                                     <Input
                                       type="number"

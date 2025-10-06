@@ -61,6 +61,12 @@ interface AbstractBillItem {
   amount: number
 }
 
+interface Unit {
+  id: string
+  unitName: string
+  unitSymbol: string
+}
+
 export default function NewAbstractBillPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -76,6 +82,8 @@ export default function NewAbstractBillPage() {
     engineer: "",
   })
   const [items, setItems] = useState<AbstractBillItem[]>([])
+  const [units, setUnits] = useState<Unit[]>([])
+  const [estimateWorkItems, setEstimateWorkItems] = useState<any[]>([])
 
   // Load measurement books on component mount
   useEffect(() => {
@@ -92,6 +100,19 @@ export default function NewAbstractBillPage() {
     }
 
     fetchMeasurementBooks()
+    // Load units for unit selection
+    const fetchUnits = async () => {
+      try {
+        const res = await fetch("/api/units")
+        if (res.ok) {
+          const data = await res.json()
+          setUnits(data)
+        }
+      } catch (e) {
+        console.error("Error fetching units", e)
+      }
+    }
+    fetchUnits()
   }, [])
 
   const handleMeasurementBookChange = (measurementBookId: string) => {
@@ -106,17 +127,44 @@ export default function NewAbstractBillPage() {
         contractor: measurementBook.contractor || "",
         engineer: measurementBook.engineer || "",
       }))
+
+      // Load estimate work items to prefill rates for added entries
+      const loadEstimateWorkItems = async () => {
+        try {
+          const estimateId = measurementBook.estimate.id
+          if (!estimateId) return
+          const res = await fetch(`/api/estimates/${estimateId}`)
+          if (res.ok) {
+            const data = await res.json()
+            setEstimateWorkItems(data?.workItems || [])
+          } else {
+            setEstimateWorkItems([])
+          }
+        } catch (e) {
+          console.error("Error fetching estimate work items", e)
+          setEstimateWorkItems([])
+        }
+      }
+      loadEstimateWorkItems()
     }
   }
 
   const addItemFromEntry = (entry: MeasurementEntry) => {
+    // Try to find a matching work item by description and unit to prefill rate
+    const match = estimateWorkItems.find((wi) => {
+      const sameUnit = wi?.unit?.id === entry.unit.id
+      const sameDesc = (wi?.description || "").trim().toLowerCase() === (entry.description || "").trim().toLowerCase()
+      return sameUnit && sameDesc
+    })
+
+    const prefillRate = match ? Number(match.rate) || 0 : 0
     const newItem: AbstractBillItem = {
       measurementEntryId: entry.id,
       description: entry.description,
       unitId: entry.unit.id,
       quantity: entry.quantity,
-      rate: 0, // User will need to enter rate
-      amount: 0,
+      rate: prefillRate,
+      amount: (entry.quantity || 0) * prefillRate,
     }
     setItems(prev => [...prev, newItem])
   }
@@ -417,11 +465,21 @@ export default function NewAbstractBillPage() {
                               />
                             </TableCell>
                             <TableCell>
-                              <Input
+                              <Select
                                 value={item.unitId}
-                                onChange={(e) => updateItem(index, 'unitId', e.target.value)}
-                                placeholder="Unit"
-                              />
+                                onValueChange={(val) => updateItem(index, 'unitId', val)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select unit" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {units.map(u => (
+                                    <SelectItem key={u.id} value={u.id}>
+                                      {u.unitName} ({u.unitSymbol})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </TableCell>
                             <TableCell>
                               <Input
