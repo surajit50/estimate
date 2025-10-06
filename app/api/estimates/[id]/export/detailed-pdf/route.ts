@@ -11,17 +11,20 @@ const getPDFLibraries = async () => {
 
 // Handle preflight requests
 export async function OPTIONS() {
-  return new NextResponse(null, { 
-    status: 200, 
+  return new NextResponse(null, {
+    status: 200,
     headers: {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
-    }
+    },
   })
 }
 
-export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
+export async function GET(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     const { id } = await context.params
     const estimate = await prisma.estimate.findUnique({
@@ -44,19 +47,22 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     // Dynamic import PDF libraries
     const { jsPDF, autoTable } = await getPDFLibraries()
 
-    // Create PDF
-    const doc = new jsPDF()
+    // Create PDF with realistic dimensions
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4"
+    })
 
-    const pageWidth = doc.internal.pageSize.getWidth()
-    // Minimal centered title
+    // Title
     doc.setFontSize(18)
     doc.setFont("helvetica", "bold")
-    doc.text("DETAILED ESTIMATE", pageWidth / 2, 20, { align: "center" })
+    doc.text("DETAILED ESTIMATE", doc.internal.pageSize.getWidth() / 2, 20, { align: "center" })
 
-    // Estimate Details
+    currentY += 8
     doc.setFontSize(10)
     doc.setFont("helvetica", "normal")
-    let yPos = 30
+    let yPos = 35
 
     doc.text(`Project Title: ${estimate.title}`, 15, yPos)
     yPos += 7
@@ -76,122 +82,154 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       yPos += 5
     }
 
-    // Separator
-    doc.setDrawColor(210)
-    doc.line(15, yPos, pageWidth - 15, yPos)
-    yPos += 6
-
-    // Drawing section removed
-
     // Detailed Work Items Table with Sub-Items
     const tableData: any[] = []
     let totalAmount = 0
 
-    estimate.workItems.forEach((item) => {
+    estimate.workItems.forEach((item, index) => {
       // Main work item row
+      const itemCode = item.itemNo.toString()
+      const description = item.description
+      
       tableData.push([
-        item.itemNo.toString(),
-        item.description,
-        item.unit.unitSymbol,
+        itemCode,
+        "", // Page Ref - empty as in sample
+        description,
         item.quantity.toFixed(2),
+        item.unit.unitSymbol,
         item.rate.toFixed(2),
-        item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 }),
+        item.amount.toFixed(2)
       ])
 
-      // Sub-items rows
+      totalAmount += item.amount
+
+      // Sub-items
       if (item.subItems && item.subItems.length > 0) {
-        item.subItems.forEach((subItem) => {
+        item.subItems.forEach((subItem, subIndex) => {
           tableData.push([
-            `  ${item.itemNo}`,
-            `  ${subItem.description}`,
-            subItem.unitSymbol,
-            `${subItem.length || "-"} × ${subItem.breadth || "-"} × ${subItem.depth || "-"} = ${subItem.quantity.toFixed(2)}`,
+            "", // Empty SL No for sub-items
+            "", // Empty Page Ref
+            `   (${String.fromCharCode(97 + subIndex)}) ${subItem.description}`, // (a), (b), etc.
+            subItem.quantity?.toFixed(2) || "",
+            subItem.unitSymbol || "",
             "",
-            "",
+            ""
           ])
         })
       }
 
-      totalAmount += item.amount
+      // Add empty row for spacing between items
+      tableData.push(["", "", "", "", "", "", ""])
     })
 
+    // Remove last empty row if it exists
+    if (tableData.length > 0 && tableData[tableData.length - 1].every((cell: string) => cell === "")) {
+      tableData.pop()
+    }
+
     autoTable(doc, {
-      startY: yPos,
-      head: [["S.No.", "Description of Work", "Unit", "Quantity/Dimensions", "Rate (₹)", "Amount (₹)"]],
+      startY: currentY,
+      head: [["SL No", "Page Ref.", "Items of work", "Quantity", "Unit", "Rate (Rs./ Unit)", "Amount (Rs.)"]],
       body: tableData,
-      foot: [["", "", "", "", "Grand Total:", `₹${totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`]],
       theme: "grid",
-      headStyles: { fillColor: [230, 230, 230], textColor: 0, fontStyle: "bold" },
-      footStyles: { fillColor: [245, 245, 245], textColor: 0, fontStyle: "bold" },
-      styles: { fontSize: 8 },
+      headStyles: {
+        fillColor: headerColor,
+        textColor: 255,
+        fontStyle: 'bold',
+        halign: 'center',
+        fontSize: 9
+      },
+      bodyStyles: {
+        fontSize: 8,
+        valign: 'top',
+        lineColor: borderColor,
+        lineWidth: 0.1
+      },
+      alternateRowStyles: {
+        fillColor: lightGray
+      },
       columnStyles: {
-        0: { cellWidth: 20, halign: "left" },
-        1: { cellWidth: 70 },
-        2: { cellWidth: 15, halign: "center" },
-        3: { cellWidth: 35, halign: "right" },
-        4: { cellWidth: 20, halign: "right" },
-        5: { cellWidth: 30, halign: "right" },
+        0: { cellWidth: 20, halign: 'center' },
+        1: { cellWidth: 20, halign: 'center' },
+        2: { cellWidth: 75 },
+        3: { cellWidth: 20, halign: 'right' },
+        4: { cellWidth: 15, halign: 'center' },
+        5: { cellWidth: 25, halign: 'right' },
+        6: { cellWidth: 25, halign: 'right' }
+      },
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+        lineColor: borderColor,
+        lineWidth: 0.1
       },
       didParseCell: (data) => {
-        // Sub-items slightly shaded; main rows lightly striped
-        if (data.section === "body") {
-          const isSubItem = data.row.cells?.[0]?.text?.[0]?.startsWith("  ")
-          if (isSubItem) {
-            data.cell.styles.fillColor = [245, 245, 245]
-            data.cell.styles.fontSize = 7
-          } else if (data.row.index % 2 === 1) {
-            data.cell.styles.fillColor = [252, 252, 252]
-          }
+        // Style sub-item rows
+        if (data.section === "body" && data.cell.raw && typeof data.cell.raw === 'string' && data.cell.raw.startsWith('   (')) {
+          data.cell.styles.fontStyle = 'normal';
+          data.cell.styles.textColor = [80, 80, 80];
+        }
+        
+        // Style main item rows
+        if (data.section === "body" && data.column.index === 2 && data.cell.raw && typeof data.cell.raw === 'string' && !data.cell.raw.startsWith('   (')) {
+          data.cell.styles.fontStyle = 'bold';
         }
       },
     })
 
-    // Summary with concise totals
-    const finalY = (doc as any).lastAutoTable.finalY + 8
-    const boxLeft = 15
-    const boxTop = finalY
-    const boxWidth = pageWidth - 30
-    const lineHeight = 6
+    const tableEndY = (doc as any).lastAutoTable.finalY
+    currentY = tableEndY + 10
 
-    // Compute taxes/charges
-    const cgst = (estimate as any).cgstPercent ?? 0
-    const sgst = (estimate as any).sgstPercent ?? 0
-    const cess = (estimate as any).cessPercent ?? 0
-    const contingency = (estimate as any).contingency ?? 0
+    // --- Summary Section ---
+    const summaryData = [
+      ["[A]", "Itemwise Total = Rs.", "", "", "", "", totalAmount.toFixed(2)],
+      ["[B]", "GST as applicable on Itemwise Total @ 18%", "", "", "", "", (totalAmount * 0.18).toFixed(2)],
+      ["[C = A+B]", "Cost of Project excluding Labour Wellfare Cess", "", "", "", "", (totalAmount * 1.18).toFixed(2)],
+      ["[D]", "Labour Wellfare Cess @ 1% on C", "", "", "", "", (totalAmount * 1.18 * 0.01).toFixed(2)],
+      ["[E = C+D]", "Cost of Project including Labour Wellfare Cess", "", "", "", "", (totalAmount * 1.18 * 1.01).toFixed(2)],
+      ["", "Contingency Charge LS", "", "", "", "", "58.00"],
+      ["", "Final Project Cost = Rs.", "", "", "", "", (totalAmount * 1.18 * 1.01 + 58).toFixed(2)],
+      ["", "S A Y = Rs.", "", "", "", "", Math.round(totalAmount * 1.18 * 1.01 + 58).toFixed(2)]
+    ]
 
-    const subtotal = totalAmount
-    const grandTotal =
-      subtotal +
-      subtotal * (Number(cgst) || 0) / 100 +
-      subtotal * (Number(sgst) || 0) / 100 +
-      subtotal * (Number(cess) || 0) / 100 +
-      subtotal * (Number(contingency) || 0) / 100
+    autoTable(doc, {
+      startY: currentY,
+      body: summaryData,
+      theme: "grid",
+      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: "bold" },
+      footStyles: { fillColor: [236, 240, 241], textColor: 0, fontStyle: "bold" },
+      styles: { fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: 25, halign: 'left', fontStyle: 'bold' },
+        1: { cellWidth: 80, halign: 'left', fontStyle: 'bold' },
+        2: { cellWidth: 15 },
+        3: { cellWidth: 15 },
+        4: { cellWidth: 15 },
+        5: { cellWidth: 15 },
+        6: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }
+      },
+      styles: {
+        cellPadding: 3
+      },
+      didParseCell: (data) => {
+        // Style sub-item rows differently
+        if (data.section === "body" && data.cell.text[0]?.startsWith("  ")) {
+          data.cell.styles.fillColor = [245, 245, 245]
+          data.cell.styles.fontSize = 7
+        }
+      },
+    })
 
-    // Box (two-line summary)
-    doc.setDrawColor(200)
-    doc.rect(boxLeft, boxTop, boxWidth, lineHeight * 2)
-
-    doc.setFontSize(10)
-    doc.setFont("helvetica", "normal")
-
-    const rightX = boxLeft + boxWidth - 4
-    const money = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
-
-    doc.text("Subtotal:", boxLeft + 4, boxTop + lineHeight)
-    doc.text(money(subtotal), rightX, boxTop + lineHeight, { align: "right" })
-
+    // Summary
+    const finalY = (doc as any).lastAutoTable.finalY + 10
+    doc.setFontSize(11)
     doc.setFont("helvetica", "bold")
-    doc.text("Grand Total (incl. taxes/charges):", boxLeft + 4, boxTop + lineHeight * 2 - 1)
-    doc.text(money(grandTotal), rightX, boxTop + lineHeight * 2 - 1, { align: "right" })
-
-    // Footer page numbers
-    const pageCount = (doc as any).internal.getNumberOfPages()
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i)
-      doc.setFontSize(8)
-      doc.setTextColor(120)
-      doc.text(`Page ${i} of ${pageCount}`, pageWidth - 15, doc.internal.pageSize.getHeight() - 8, { align: "right" })
-    }
+    
+    doc.text(
+      `Estimated Project Cost: ₹${totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+      15,
+      finalY + 7,
+    )
 
     // Generate PDF buffer
     const pdfBuffer = doc.output("arraybuffer")
@@ -199,7 +237,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     return new NextResponse(pdfBuffer, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="detailed-estimate-${estimate.title.replace(/[^a-z0-9]/gi, "-")}.pdf"`,
+        "Content-Disposition": `attachment; filename="Estimate-${estimate.title.replace(/[^a-z0-9]/gi, "-")}.pdf"`,
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type",

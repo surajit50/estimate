@@ -20,13 +20,9 @@ export async function POST(request: NextRequest) {
       estimateId,
       itemNo,
       pageRef,
-      itemRef,
       description,
       unitId,
       rate,
-      length,
-      width,
-      height,
       quantity,
       amount,
       subItems,
@@ -34,7 +30,7 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Validation
-    if (!estimateId || !description || !unitId || !rate || !quantity) {
+    if (!estimateId || !description || !unitId || !rate || quantity === undefined) {
       return NextResponse.json(
         { error: "Missing required fields: estimateId, description, unitId, rate, quantity" },
         { status: 400, headers: corsHeaders }
@@ -53,34 +49,70 @@ export async function POST(request: NextRequest) {
       itemNo,
       description,
       unitId,
+      rate,
+      quantity,
+      amount,
       subItemsCount: subItems?.length || 0,
       subCategoriesCount: subCategories?.length || 0,
     })
 
+    // Calculate the total quantity from sub-items and sub-categories if provided
+    let calculatedQuantity = parseFloat(quantity);
+    let calculatedAmount = parseFloat(amount) || 0;
+
+    // If no explicit quantity/amount provided but we have sub-items, calculate them
+    if ((!quantity || !amount) && (subItems?.length > 0 || subCategories?.length > 0)) {
+      calculatedQuantity = 0;
+      
+      // Calculate from direct sub-items
+      if (subItems && subItems.length > 0) {
+        subItems.forEach((item: any) => {
+          const nos = Number(item.nos) || 0;
+          const length = Number(item.length) || 0;
+          const breadth = Number(item.breadth) || 0;
+          const depth = Number(item.depth) || 0;
+          calculatedQuantity += nos * length * breadth * depth;
+        });
+      }
+
+      // Calculate from sub-categories
+      if (subCategories && subCategories.length > 0) {
+        subCategories.forEach((category: any) => {
+          if (category.subItems && category.subItems.length > 0) {
+            category.subItems.forEach((subItem: any) => {
+              const nos = Number(subItem.nos) || 0;
+              const length = Number(subItem.length) || 0;
+              const breadth = Number(subItem.breadth) || 0;
+              const depth = Number(subItem.depth) || 0;
+              calculatedQuantity += nos * length * breadth * depth;
+            });
+          }
+        });
+      }
+
+      calculatedAmount = calculatedQuantity * parseFloat(rate);
+    }
+
     const workItem = await prisma.workItem.create({
       data: {
         estimateId,
-        itemNo,
+        itemNo: parseInt(itemNo) || 1,
         pageRef: pageRef?.trim() || null,
-        // itemRef field removed from schema; retained in request but not stored
         description: description.trim(),
         unitId,
         rate: parseFloat(rate),
-        length: parseFloat(length) || 0,
-        width: parseFloat(width) || 0,
-        height: parseFloat(height) || 0,
-        quantity: parseFloat(quantity),
-        amount: parseFloat(amount) || 0,
+        quantity: calculatedQuantity,
+        amount: calculatedAmount,
         subItems:
           subItems && subItems.length > 0
             ? {
                 create: subItems.map((subItem: any) => ({
                   description: subItem.description?.trim() || "",
-                  nos: parseInt(subItem.nos) || 1,
+                  nos: parseFloat(subItem.nos) || 1,
                   length: parseFloat(subItem.length) || 0,
                   breadth: parseFloat(subItem.breadth) || 0,
                   depth: parseFloat(subItem.depth) || 0,
-                  quantity: parseFloat(subItem.quantity) || 0,
+                  quantity: (parseFloat(subItem.nos) || 1) * (parseFloat(subItem.length) || 0) * (parseFloat(subItem.breadth) || 0) * (parseFloat(subItem.depth) || 0),
                   unitSymbol: subItem.unitSymbol?.trim() || "",
                 })),
               }
@@ -94,11 +126,11 @@ export async function POST(request: NextRequest) {
                   subItems: {
                     create: (category.subItems || []).map((subItem: any) => ({
                       description: subItem.description?.trim() || "",
-                      nos: parseInt(subItem.nos) || 1,
+                      nos: parseFloat(subItem.nos) || 1,
                       length: parseFloat(subItem.length) || 0,
                       breadth: parseFloat(subItem.breadth) || 0,
                       depth: parseFloat(subItem.depth) || 0,
-                      quantity: parseFloat(subItem.quantity) || 0,
+                      quantity: (parseFloat(subItem.nos) || 1) * (parseFloat(subItem.length) || 0) * (parseFloat(subItem.breadth) || 0) * (parseFloat(subItem.depth) || 0),
                       unitSymbol: subItem.unitSymbol?.trim() || "",
                     })),
                   },
@@ -119,10 +151,11 @@ export async function POST(request: NextRequest) {
 
     console.log("[v0] Work item created successfully:", workItem.id)
 
+    // Add to rate library if it doesn't exist
     try {
       const existingRate = await prisma.rateLibrary.findFirst({
         where: {
-          description: description,
+          description: description.trim(),
           unitId: unitId,
         },
       })
@@ -130,9 +163,9 @@ export async function POST(request: NextRequest) {
       if (!existingRate) {
         await prisma.rateLibrary.create({
           data: {
-            description,
+            description: description.trim(),
             unitId,
-            standardRate: rate,
+            standardRate: parseFloat(rate),
             year: new Date().getFullYear().toString(),
           },
         })
