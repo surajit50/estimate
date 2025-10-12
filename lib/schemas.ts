@@ -45,3 +45,31 @@ export const simpleWorkItemSchema = z.object({
 
 export type SimpleWorkItemFormValues = z.infer<typeof simpleWorkItemSchema>
 
+export const workItemSchema = z.object({
+  pageRef: z.string().optional().default(""),
+  description: nonEmptyString,
+  unitId: nonEmptyString,
+  rate: z.coerce.number().positive("Must be > 0"),
+  quantity: z.coerce.number().positive("Must be > 0"),
+  subItems: z.array(z.object({
+    description: z.string().optional().default(""),
+    nos: z.coerce.number().positive("Must be > 0"),
+    length: z.coerce.number().positive("Must be > 0"),
+    breadth: z.coerce.number().positive("Must be > 0"),
+    depth: z.coerce.number().positive("Must be > 0"),
+  })).optional().default([]),
+  subCategories: z.array(z.object({
+    categoryName: z.string().optional().default(""),
+    description: z.string().optional().default(""),
+    subItems: z.array(z.object({
+      description: z.string().optional().default(""),
+      nos: z.coerce.number().positive("Must be > 0"),
+      length: z.coerce.number().positive("Must be > 0"),
+      breadth: z.coerce.number().positive("Must be > 0"),
+      depth: z.coerce.number().positive("Must be > 0"),
+    })).optional().default([]),
+  })).optional().default([]),
+})
+
+export type WorkItemFormValues = z.infer<typeof workItemSchema>
+

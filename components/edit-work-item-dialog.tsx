@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea"
 
 import type { WorkItemWithUnit, UnitMasterType, RateLibraryType } from "@/lib/types"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { simpleWorkItemSchema, type SimpleWorkItemFormValues } from "@/lib/schemas"
+import { workItemSchema, type WorkItemFormValues } from "@/lib/schemas"
 
 type EditableSubItem = {
   id?: string
@@ -46,15 +46,16 @@ interface EditWorkItemDialogProps {
 }
 
 export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }: EditWorkItemDialogProps) {
-  const form = useForm<SimpleWorkItemFormValues>({
-    resolver: zodResolver(simpleWorkItemSchema),
+  const form = useForm<WorkItemFormValues>({
+    resolver: zodResolver(workItemSchema),
     defaultValues: {
       pageRef: "",
       description: "",
       unitId: "",
       rate: 0,
-      subCategories: [],
+      quantity: 0,
       subItems: [],
+      subCategories: [],
     },
   })
 
@@ -198,7 +199,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
     return calculatedQuantity * r
   }, [watchedRate, calculatedQuantity])
 
-  const onSubmit = async (values: SimpleWorkItemFormValues) => {
+  const onSubmit = async (values: WorkItemFormValues) => {
     if (!item) return
     try {
       const selectedUnit = units.find((u) => u.id === values.unitId)
