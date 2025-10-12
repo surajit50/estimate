@@ -23,9 +23,13 @@ interface BillItem {
   amount: number
 }
 
-export default function EditAbstractBillPage({ params }: { params: { id: string } }) {
+export default function EditAbstractBillPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
-  const { id } = params
+  const [id, setId] = useState<string>('')
+
+  useEffect(() => {
+    params.then(({ id }) => setId(id))
+  }, [params])
   const [loading, setLoading] = useState(false)
   const [units, setUnits] = useState<Unit[]>([])
   const [formData, setFormData] = useState({
@@ -120,6 +124,18 @@ export default function EditAbstractBillPage({ params }: { params: { id: string 
   }
 
   const total = items.reduce((s, it) => s + (Number(it.amount) || 0), 0)
+
+  if (!id) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+        <main className="container mx-auto px-6 py-12">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-muted-foreground">Loading...</div>
+          </div>
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">

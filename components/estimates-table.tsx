@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Eye, Edit, Trash2, FileText, PlusCircle } from "lucide-react"
 import { DeleteEstimateDialog } from "@/components/delete-estimate-dialog"
+import { deleteEstimate } from "@/lib/actions/estimates"
 
 interface Estimate {
   id: string
@@ -28,13 +29,13 @@ export function EstimatesTable({ estimates: initialEstimates }: EstimatesTablePr
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
   const handleDelete = async (id: string) => {
-    const response = await fetch(`/api/estimates/${id}`, {
-      method: "DELETE",
-    })
+    const result = await deleteEstimate(id)
 
-    if (response.ok) {
+    if (result.success) {
       setEstimates(estimates.filter((e) => e.id !== id))
       setDeleteId(null)
+    } else {
+      console.error("Error deleting estimate:", result.error)
     }
   }
 

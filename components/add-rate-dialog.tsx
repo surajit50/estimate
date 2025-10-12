@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2 } from "lucide-react"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { rateSchema, type RateFormValues } from "@/lib/schemas"
+import { createRate } from "@/lib/actions/rates"
 
 interface Unit {
   id: string
@@ -47,16 +48,13 @@ export function AddRateDialog({ open, onOpenChange, onAdd, units }: AddRateDialo
 
   const onSubmit = async (values: RateFormValues) => {
     try {
-      const response = await fetch("/api/rates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      })
+      const result = await createRate(values)
 
-      if (response.ok) {
-        const newRate = await response.json()
-        onAdd(newRate)
+      if (result.success) {
+        onAdd(result.data)
         form.reset({ description: "", unitId: "", standardRate: 0, year: "" })
+      } else {
+        console.error("Error adding rate:", result.error)
       }
     } catch (error) {
       console.error("Error adding rate:", error)

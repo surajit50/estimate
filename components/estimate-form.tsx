@@ -14,6 +14,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { estimateSchema, type EstimateFormValues } from "@/lib/schemas"
 import { ESTIMATE_CATEGORIES } from "@/lib/types"
 import { Loader2 } from "lucide-react"
+import { createEstimate, updateEstimate } from "@/lib/actions/estimates"
 
 interface EstimateFormProps {
   estimate?: {
@@ -50,18 +51,18 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
 
   const onSubmit = async (values: EstimateFormValues) => {
     try {
-      const url = estimate ? `/api/estimates/${estimate.id}` : "/api/estimates"
-      const method = estimate ? "PUT" : "POST"
+      let result
+      if (estimate) {
+        result = await updateEstimate(estimate.id, values)
+      } else {
+        result = await createEstimate(values)
+      }
 
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        router.push(`/estimates/${data.id}/work-items`)
+      if (result.success) {
+        const estimateId = estimate ? estimate.id : result.data.id
+        router.push(`/estimates/${estimateId}/work-items`)
+      } else {
+        console.error("Error saving estimate:", result.error)
       }
     } catch (error) {
       console.error("Error saving estimate:", error)

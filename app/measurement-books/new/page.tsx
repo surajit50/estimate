@@ -17,6 +17,7 @@ import {
 import { DashboardHeader } from "@/components/dashboard-header"
 import { ArrowLeft, Save } from "lucide-react"
 import { toast } from "sonner"
+import { getEstimates } from "@/lib/actions/estimates"
 
 interface Estimate {
   id: string
@@ -76,10 +77,9 @@ export default function NewMeasurementBookPage() {
   React.useEffect(() => {
     const fetchEstimates = async () => {
       try {
-        const response = await fetch("/api/estimates")
-        if (response.ok) {
-          const estimatesData = await response.json()
-          setEstimates(estimatesData)
+        const result = await getEstimates()
+        if (result.success) {
+          setEstimates(result.data)
         }
       } catch (error) {
         console.error("Error fetching estimates:", error)

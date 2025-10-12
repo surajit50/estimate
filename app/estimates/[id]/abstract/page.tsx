@@ -5,8 +5,8 @@ import { ArrowLeft, Download, FileSpreadsheet } from "lucide-react"
 import { AbstractView } from "@/components/abstract-view"
 import { notFound } from "next/navigation"
 
-export default async function AbstractPage({ params }: { params: { id: string } }) {
-  const { id } = params
+export default async function AbstractPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const estimate = await prisma.estimate.findUnique({
     where: { id },
     include: {

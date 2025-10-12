@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/db"
 import { notFound } from "next/navigation"
 
-export default async function AbstractBillDownloadPage({ params }: { params: { id: string } }) {
-  const { id } = params
+export default async function AbstractBillDownloadPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
 
   const abstractBill = await prisma.abstractBill.findUnique({
     where: { id },

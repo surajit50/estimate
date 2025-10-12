@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/select"
 import { toast } from "sonner"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { getUnits } from "@/lib/actions/units"
+import { getEstimate } from "@/lib/actions/estimates"
 
 interface Unit {
   id: string
@@ -67,10 +69,9 @@ export function AddMeasurementEntryDialog({
   useEffect(() => {
     const fetchUnits = async () => {
       try {
-        const response = await fetch("/api/units")
-        if (response.ok) {
-          const unitsData = await response.json()
-          setUnits(unitsData)
+        const result = await getUnits()
+        if (result.success) {
+          setUnits(result.data)
         }
       } catch (error) {
         console.error("Error fetching units:", error)
@@ -88,10 +89,9 @@ export function AddMeasurementEntryDialog({
         if (!estimateId) return
 
         // Fetch estimate with work items (includes unit and rate)
-        const estRes = await fetch(`/api/estimates/${estimateId}`)
-        if (estRes.ok) {
-          const est = await estRes.json()
-          setWorkItems(est?.workItems || [])
+        const result = await getEstimate(estimateId)
+        if (result.success) {
+          setWorkItems(result.data?.workItems || [])
         }
       } catch (error) {
         console.error("Error fetching work items:", error)

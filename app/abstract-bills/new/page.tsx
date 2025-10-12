@@ -24,6 +24,8 @@ import {
 import { DashboardHeader } from "@/components/dashboard-header"
 import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { getUnits } from "@/lib/actions/units"
+import { getEstimate } from "@/lib/actions/estimates"
 
 interface MeasurementBook {
   id: string
@@ -103,10 +105,9 @@ export default function NewAbstractBillPage() {
     // Load units for unit selection
     const fetchUnits = async () => {
       try {
-        const res = await fetch("/api/units")
-        if (res.ok) {
-          const data = await res.json()
-          setUnits(data)
+        const result = await getUnits()
+        if (result.success) {
+          setUnits(result.data)
         }
       } catch (e) {
         console.error("Error fetching units", e)
@@ -133,10 +134,9 @@ export default function NewAbstractBillPage() {
         try {
           const estimateId = measurementBook.estimate.id
           if (!estimateId) return
-          const res = await fetch(`/api/estimates/${estimateId}`)
-          if (res.ok) {
-            const data = await res.json()
-            setEstimateWorkItems(data?.workItems || [])
+          const result = await getEstimate(estimateId)
+          if (result.success) {
+            setEstimateWorkItems(result.data?.workItems || [])
           } else {
             setEstimateWorkItems([])
           }

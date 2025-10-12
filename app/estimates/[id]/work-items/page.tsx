@@ -5,8 +5,8 @@ import { ArrowLeft } from "lucide-react"
 import { WorkItemsManager } from "@/components/work-items-manager"
 import { notFound } from "next/navigation"
 
-export default async function WorkItemsPage({ params }: { params: { id: string } }) {
-  const { id } = params
+export default async function WorkItemsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const [estimate, units, rates] = await Promise.all([
     prisma.estimate.findUnique({
       where: { id },

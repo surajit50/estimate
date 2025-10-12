@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Loader2 } from "lucide-react"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { unitSchema, type UnitFormValues } from "@/lib/schemas"
+import { createUnit } from "@/lib/actions/units"
 
 interface AddUnitDialogProps {
   open: boolean
@@ -39,16 +40,13 @@ export function AddUnitDialog({ open, onOpenChange, onAdd }: AddUnitDialogProps)
 
   const onSubmit = async (values: UnitFormValues) => {
     try {
-      const response = await fetch("/api/units", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      })
+      const result = await createUnit(values)
 
-      if (response.ok) {
-        const newUnit = await response.json()
-        onAdd(newUnit)
+      if (result.success) {
+        onAdd(result.data)
         form.reset({ unitName: "", unitSymbol: "" })
+      } else {
+        console.error("Error adding unit:", result.error)
       }
     } catch (error) {
       console.error("Error adding unit:", error)
