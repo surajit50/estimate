@@ -11,25 +11,25 @@ export async function createWorkItem(data: {
   unitId: string
   rate: number
   quantity: number
-  length?: number
-  width?: number
-  height?: number
+  length?: number | null
+  width?: number | null
+  height?: number | null
   amount: number
   
   // Cost Breakdown
-  materialCost?: number
-  laborCost?: number
-  equipmentCost?: number
-  overheadCost?: number
+  materialCost?: number | null
+  laborCost?: number | null
+  equipmentCost?: number | null
+  overheadCost?: number | null
   
   // Additional Fields
-  discount?: number
-  profitMargin?: number
+  discount?: number | null
+  profitMargin?: number | null
   notes?: string | null
   
   // Status and Priority
-  status?: string
-  priority?: string
+  status?: string | null
+  priority?: string | null
   
   subItems?: any[]
   subCategories?: any[]
@@ -162,26 +162,26 @@ export async function updateWorkItem(id: string, data: {
   description?: string
   unitId?: string
   rate?: number
-  length?: number
-  width?: number
-  height?: number
+  length?: number | null
+  width?: number | null
+  height?: number | null
   quantity?: number
   amount?: number
   
   // Cost Breakdown
-  materialCost?: number
-  laborCost?: number
-  equipmentCost?: number
-  overheadCost?: number
+  materialCost?: number | null
+  laborCost?: number | null
+  equipmentCost?: number | null
+  overheadCost?: number | null
   
   // Additional Fields
-  discount?: number
-  profitMargin?: number
+  discount?: number | null
+  profitMargin?: number | null
   notes?: string | null
   
   // Status and Priority
-  status?: string
-  priority?: string
+  status?: string | null
+  priority?: string | null
   
   subItems?: any[]
   subCategories?: any[]
