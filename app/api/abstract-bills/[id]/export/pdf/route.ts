@@ -69,7 +69,7 @@ export async function GET(
 
     // Add items table
     const tableData = abstractBill.items.map(item => [
-      item.itemNo || '',
+      item.measurementEntry?.itemNo || '',
       item.description || '',
       item.unit?.unitSymbol || '',
       item.quantity?.toFixed(3) || '0.000',

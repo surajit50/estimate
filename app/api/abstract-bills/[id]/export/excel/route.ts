@@ -36,7 +36,7 @@ export async function GET(
 
     // Prepare data for Excel
     const itemsData = abstractBill.items.map(item => ({
-      'Item No': item.itemNo || '',
+      'Item No': item.measurementEntry?.itemNo || '',
       'Description': item.description || '',
       'Unit': item.unit?.unitSymbol || '',
       'Quantity': item.quantity || 0,
