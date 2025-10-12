@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Trash2, Edit, Check, X, Save } from "lucide-react"
+import { Plus, Trash2, Edit, Check, X, Save, Loader2 } from "lucide-react"
 import AddWorkItemDialog from "@/components/add-work-item-dialog"
 import { updateWorkItem, deleteWorkItem } from "@/lib/actions/work-items"
 import type { WorkItemWithUnit, UnitMasterType, RateLibraryType, SubCategoryType, SubWorkItemType } from "@/lib/types"
@@ -52,16 +52,60 @@ function qtyFromSubCategories(subCategories?: SubCategoryType[]) {
   return (subCategories ?? []).reduce((acc, c) => acc + qtyFromSubItems(c.subItems), 0)
 }
 
-function deriveQuantity(wi: WorkItemWithUnit): number {
-  // For simplified work items, just use the quantity directly
+function deriveQuantity(wi: WorkItemWithUnit, units: UnitMasterType[]): number {
+  const unit = units.find(u => u.id === wi.unitId)
+  const unitSymbol = unit?.unitSymbol?.toLowerCase() || ""
+  
+  // For m2 units, calculate as length × width
+  if (unitSymbol === "m2" || unitSymbol === "m²") {
+    const length = isNumber(wi.length) ? wi.length : 0
+    const width = isNumber(wi.width) ? wi.width : 0
+    if (length > 0 && width > 0) {
+      return length * width
+    }
+  }
+  // For m3 units, calculate as length × width × height
+  else if (unitSymbol === "m3" || unitSymbol === "m³") {
+    const length = isNumber(wi.length) ? wi.length : 0
+    const width = isNumber(wi.width) ? wi.width : 0
+    const height = isNumber(wi.height) ? wi.height : 0
+    if (length > 0 && width > 0 && height > 0) {
+      return length * width * height
+    }
+  }
+  
+  // For other units, use the quantity directly
   return isNumber(wi.quantity) ? wi.quantity : 0
 }
 
-function deriveAmount(wi: WorkItemWithUnit, qty: number): number {
-  // For simplified work items, just use the amount directly or calculate from quantity * rate
-  if (isNumber(wi.amount)) return wi.amount
+function deriveAmount(wi: WorkItemWithUnit, qty: number, units: UnitMasterType[]): number {
   const rate = isNumber(wi.rate) ? wi.rate : 0
-  return qty * rate
+  const unit = units.find(u => u.id === wi.unitId)
+  const unitSymbol = unit?.unitSymbol?.toLowerCase() || ""
+  
+  // Calculate quantity based on unit type and dimensions
+  let calculatedQuantity = qty
+  
+  // For m2 units, calculate as length × width
+  if (unitSymbol === "m2" || unitSymbol === "m²") {
+    const length = isNumber(wi.length) ? wi.length : 0
+    const width = isNumber(wi.width) ? wi.width : 0
+    if (length > 0 && width > 0) {
+      calculatedQuantity = length * width
+    }
+  }
+  // For m3 units, calculate as length × width × height
+  else if (unitSymbol === "m3" || unitSymbol === "m³") {
+    const length = isNumber(wi.length) ? wi.length : 0
+    const width = isNumber(wi.width) ? wi.width : 0
+    const height = isNumber(wi.height) ? wi.height : 0
+    if (length > 0 && width > 0 && height > 0) {
+      calculatedQuantity = length * width * height
+    }
+  }
+  // For other units, use the provided quantity directly
+  
+  return calculatedQuantity * rate
 }
 
 export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onUpdate, onDelete, onAddHeading, onUpdateHeading, onDeleteHeading }: WorkItemsTableProps) {
@@ -75,6 +119,9 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
   const [quantityValue, setQuantityValue] = React.useState("")
   const [headingDialogOpen, setHeadingDialogOpen] = React.useState(false)
   const [newHeadingTitle, setNewHeadingTitle] = React.useState("")
+  const [isUpdatingQuantity, setIsUpdatingQuantity] = React.useState<string | null>(null)
+  const [isDeletingItem, setIsDeletingItem] = React.useState<string | null>(null)
+  const [isBulkProcessing, setIsBulkProcessing] = React.useState(false)
 
   const nextItemNo = React.useMemo(() => {
     const maxNo = workItems.reduce((m, wi) => Math.max(m, wi.itemNo ?? 0), 0)
@@ -100,6 +147,7 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
   }
 
   const handleBulkUpdate = async () => {
+    setIsBulkProcessing(true)
     try {
       const updates = Array.from(selectedItems).map(async itemId => {
         const item = workItems.find(wi => wi.id === itemId)
@@ -128,10 +176,13 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
       setBulkDescription("")
     } catch (error) {
       console.error("Error updating work items:", error)
+    } finally {
+      setIsBulkProcessing(false)
     }
   }
 
   const handleBulkDelete = async () => {
+    setIsBulkProcessing(true)
     try {
       const deletePromises = Array.from(selectedItems).map(async itemId => {
         const result = await deleteWorkItem(itemId)
@@ -144,6 +195,8 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
       setSelectedItems(new Set())
     } catch (error) {
       console.error("Error deleting work items:", error)
+    } finally {
+      setIsBulkProcessing(false)
     }
   }
 
@@ -153,14 +206,16 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
   }
 
   const handleQuantitySave = async (itemId: string) => {
+    setIsUpdatingQuantity(itemId)
     try {
       const newQuantity = parseFloat(quantityValue)
       if (!isNaN(newQuantity) && newQuantity >= 0) {
         const item = workItems.find(wi => wi.id === itemId)
         if (item) {
+          const updatedItem = { ...item, quantity: newQuantity }
           const updateData = {
             quantity: newQuantity,
-            amount: deriveAmount({ ...item, quantity: newQuantity }, newQuantity)
+            amount: deriveAmount(updatedItem, newQuantity, units)
           }
           const result = await updateWorkItem(itemId, updateData)
           if (result.success && result.data) {
@@ -173,6 +228,7 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
     } finally {
       setEditingQuantity(null)
       setQuantityValue("")
+      setIsUpdatingQuantity(null)
     }
   }
 
@@ -218,7 +274,7 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
             <>
               <Dialog open={bulkEditOpen} onOpenChange={setBulkEditOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" disabled={isBulkProcessing}>
                     <Edit className="h-4 w-4 mr-2" />
                     Edit Selected ({selectedItems.size})
                   </Button>
@@ -242,17 +298,25 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
                         <X className="h-4 w-4 mr-2" />
                         Cancel
                       </Button>
-                      <Button onClick={handleBulkUpdate}>
-                        <Check className="h-4 w-4 mr-2" />
-                        Apply Changes
+                      <Button onClick={handleBulkUpdate} disabled={isBulkProcessing}>
+                        {isBulkProcessing ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Check className="h-4 w-4 mr-2" />
+                        )}
+                        {isBulkProcessing ? "Applying..." : "Apply Changes"}
                       </Button>
                     </div>
                   </div>
                 </DialogContent>
               </Dialog>
-              <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Selected
+              <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={isBulkProcessing}>
+                {isBulkProcessing ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-2" />
+                )}
+                {isBulkProcessing ? "Deleting..." : "Delete Selected"}
               </Button>
             </>
           )}
@@ -366,8 +430,8 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
                       .filter(wi => (wi as any).headingId === heading.id)
                       .map((wi) => {
                         const symbol = unitSymbolForItem(wi, units)
-                        const displayQty = deriveQuantity(wi)
-                        const displayAmount = deriveAmount(wi, displayQty)
+                        const displayQty = deriveQuantity(wi, units)
+                        const displayAmount = deriveAmount(wi, displayQty, units)
                         const isSelected = selectedItems.has(wi.id)
 
                         return (
@@ -394,15 +458,30 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
                                     onChange={(e) => setQuantityValue(e.target.value)}
                                     className="w-20 h-8"
                                     autoFocus
+                                    disabled={isUpdatingQuantity === wi.id}
                                     onKeyDown={(e) => {
                                       if (e.key === 'Enter') handleQuantitySave(wi.id)
                                       if (e.key === 'Escape') handleQuantityCancel()
                                     }}
                                   />
-                                  <Button size="sm" variant="ghost" onClick={() => handleQuantitySave(wi.id)}>
-                                    <Check className="h-3 w-3" />
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    onClick={() => handleQuantitySave(wi.id)}
+                                    disabled={isUpdatingQuantity === wi.id}
+                                  >
+                                    {isUpdatingQuantity === wi.id ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <Check className="h-3 w-3" />
+                                    )}
                                   </Button>
-                                  <Button size="sm" variant="ghost" onClick={handleQuantityCancel}>
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    onClick={handleQuantityCancel}
+                                    disabled={isUpdatingQuantity === wi.id}
+                                  >
                                     <X className="h-3 w-3" />
                                   </Button>
                                 </div>
@@ -434,14 +513,24 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
                                 variant="ghost"
                                 size="icon"
                                 aria-label={`Delete item ${wi.itemNo}`}
+                                disabled={isDeletingItem === wi.id}
                                 onClick={async () => {
-                                  const result = await deleteWorkItem(wi.id)
-                                  if (result.success) {
-                                    onDelete(wi.id)
+                                  setIsDeletingItem(wi.id)
+                                  try {
+                                    const result = await deleteWorkItem(wi.id)
+                                    if (result.success) {
+                                      onDelete(wi.id)
+                                    }
+                                  } finally {
+                                    setIsDeletingItem(null)
                                   }
                                 }}
                               >
-                                <Trash2 className="h-4 w-4 text-destructive" />
+                                {isDeletingItem === wi.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                )}
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -455,8 +544,8 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
                   .filter(wi => !(wi as any).headingId)
                   .map((wi) => {
                     const symbol = unitSymbolForItem(wi, units)
-                    const displayQty = deriveQuantity(wi)
-                    const displayAmount = deriveAmount(wi, displayQty)
+                    const displayQty = deriveQuantity(wi, units)
+                    const displayAmount = deriveAmount(wi, displayQty, units)
                     const isSelected = selectedItems.has(wi.id)
 
                     return (
@@ -483,15 +572,30 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
                                 onChange={(e) => setQuantityValue(e.target.value)}
                                 className="w-20 h-8"
                                 autoFocus
+                                disabled={isUpdatingQuantity === wi.id}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') handleQuantitySave(wi.id)
                                   if (e.key === 'Escape') handleQuantityCancel()
                                 }}
                               />
-                              <Button size="sm" variant="ghost" onClick={() => handleQuantitySave(wi.id)}>
-                                <Check className="h-3 w-3" />
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => handleQuantitySave(wi.id)}
+                                disabled={isUpdatingQuantity === wi.id}
+                              >
+                                {isUpdatingQuantity === wi.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Check className="h-3 w-3" />
+                                )}
                               </Button>
-                              <Button size="sm" variant="ghost" onClick={handleQuantityCancel}>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={handleQuantityCancel}
+                                disabled={isUpdatingQuantity === wi.id}
+                              >
                                 <X className="h-3 w-3" />
                               </Button>
                             </div>
@@ -523,14 +627,24 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
                             variant="ghost"
                             size="icon"
                             aria-label={`Delete item ${wi.itemNo}`}
+                            disabled={isDeletingItem === wi.id}
                             onClick={async () => {
-                              const result = await deleteWorkItem(wi.id)
-                              if (result.success) {
-                                onDelete(wi.id)
+                              setIsDeletingItem(wi.id)
+                              try {
+                                const result = await deleteWorkItem(wi.id)
+                                if (result.success) {
+                                  onDelete(wi.id)
+                                }
+                              } finally {
+                                setIsDeletingItem(null)
                               }
                             }}
                           >
-                            <Trash2 className="h-4 w-4 text-destructive" />
+                            {isDeletingItem === wi.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            )}
                           </Button>
                         </TableCell>
                       </TableRow>

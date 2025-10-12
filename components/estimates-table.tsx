@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Eye, Edit, Trash2, FileText, PlusCircle } from "lucide-react"
+import { EmptyState } from "@/components/empty-state"
 import { DeleteEstimateDialog } from "@/components/delete-estimate-dialog"
 import { deleteEstimate } from "@/lib/actions/estimates"
 
@@ -64,21 +65,15 @@ export function EstimatesTable({ estimates: initialEstimates }: EstimatesTablePr
         </CardHeader>
         <CardContent>
           {estimates.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="mx-auto w-24 h-24 bg-muted/50 rounded-full flex items-center justify-center mb-6">
-                <FileText className="h-12 w-12 text-muted-foreground" />
-              </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">No estimates yet</h3>
-              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                Get started by creating your first construction estimate. Track costs, manage work items, and generate professional reports.
-              </p>
-              <Link href="/estimates/new">
-                <Button size="lg" className="group">
-                  <PlusCircle className="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-200" />
-                  Create Your First Estimate
-                </Button>
-              </Link>
-            </div>
+            <EmptyState
+              icon={<FileText className="h-12 w-12 text-muted-foreground" />}
+              title="No estimates yet"
+              description="Get started by creating your first construction estimate. Track costs, manage work items, and generate professional reports."
+              action={{
+                label: "Create Your First Estimate",
+                onClick: () => window.location.href = "/estimates/new"
+              }}
+            />
           ) : (
             <div className="rounded-md border">
               <Table>

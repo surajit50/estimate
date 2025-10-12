@@ -19,13 +19,13 @@ export function DashboardHeader() {
 
   return (
     <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-      <div className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-6 py-6">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
-            <h1 className="text-4xl font-bold gradient-text">
+            <h1 className="text-3xl font-bold gradient-text">
               Estimate Preparation System
             </h1>
-            <p className="text-muted-foreground text-lg">Manage construction estimates and work items with precision</p>
+            <p className="text-muted-foreground">Manage construction estimates and work items with precision</p>
           </div>
           <div className="flex gap-4">
             <Button

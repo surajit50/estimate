@@ -33,6 +33,8 @@ interface EstimateFormProps {
 
 export function EstimateForm({ estimate }: EstimateFormProps) {
   const router = useRouter()
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
 
   const form = useForm<EstimateFormValues>({
     resolver: zodResolver(estimateSchema),
@@ -50,6 +52,9 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
   })
 
   const onSubmit = async (values: EstimateFormValues) => {
+    setIsSubmitting(true)
+    setError(null)
+    
     try {
       let result
       if (estimate) {
@@ -62,10 +67,13 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
         const estimateId = estimate ? estimate.id : result.data.id
         router.push(`/estimates/${estimateId}/work-items`)
       } else {
-        console.error("Error saving estimate:", result.error)
+        setError(result.error || "Failed to save estimate")
       }
     } catch (error) {
       console.error("Error saving estimate:", error)
+      setError(error instanceof Error ? error.message : "Failed to save estimate")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -224,12 +232,19 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
               </div>
             </div>
 
+            {/* Error Display */}
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/20 rounded-md p-4">
+                <p className="text-sm text-destructive font-medium">{error}</p>
+              </div>
+            )}
+
             <div className="flex gap-4 pt-6">
-              <Button type="submit" size="lg" className="flex-1 group" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting && <Loader2 className="h-5 w-5 mr-2 animate-spin" />}
-                {estimate ? "Update Estimate" : "Create Estimate"}
+              <Button type="submit" size="lg" className="flex-1 group" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="h-5 w-5 mr-2 animate-spin" />}
+                {isSubmitting ? (estimate ? "Updating..." : "Creating...") : (estimate ? "Update Estimate" : "Create Estimate")}
               </Button>
-              <Button type="button" variant="outline" onClick={() => router.back()} disabled={form.formState.isSubmitting} size="lg">
+              <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting} size="lg">
                 Cancel
               </Button>
             </div>

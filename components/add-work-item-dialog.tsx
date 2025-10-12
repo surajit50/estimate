@@ -52,6 +52,9 @@ export default function AddWorkItemDialog({
   rates,
   nextItemNo,
 }: AddWorkItemDialogProps) {
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+  
   const form = useForm({
     resolver: zodResolver(simpleWorkItemSchema),
     defaultValues: {
@@ -73,6 +76,8 @@ export default function AddWorkItemDialog({
         rate: 0,
         quantity: 0,
       })
+      setError(null)
+      setIsSubmitting(false)
     }
   }, [open, form])
 
@@ -88,6 +93,9 @@ export default function AddWorkItemDialog({
 
   // Submit handler
   const onSubmit = async (values: any) => {
+    setIsSubmitting(true)
+    setError(null)
+    
     try {
       const amount = values.quantity * values.rate
 
@@ -114,6 +122,9 @@ export default function AddWorkItemDialog({
       onOpenChange(false)
     } catch (error) {
       console.error("Error adding work item:", error)
+      setError(error instanceof Error ? error.message : "Failed to create work item")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -254,18 +265,25 @@ export default function AddWorkItemDialog({
               </div>
             )}
 
+            {/* Error Display */}
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
+                <p className="text-sm text-destructive font-medium">{error}</p>
+              </div>
+            )}
+
             <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                disabled={form.formState.isSubmitting}
+                disabled={isSubmitting}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Add Work Item
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {isSubmitting ? "Adding..." : "Add Work Item"}
               </Button>
             </DialogFooter>
           </form>
