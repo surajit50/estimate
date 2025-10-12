@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Checkbox } from "@/components/ui/checkbox"
 import { 
   Plus, 
   Save, 
@@ -32,6 +33,7 @@ interface WorkItemsPageClientProps {
   estimate: EstimateWithItems
   units: UnitMasterType[]
   rates: RateLibraryType[]
+  allWorkItems: any[]
 }
 
 interface NewWorkItemForm {
@@ -52,13 +54,15 @@ interface NewWorkItemForm {
   pageRef: string
 }
 
-export function WorkItemsPageClient({ estimate, units, rates }: WorkItemsPageClientProps) {
+export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: WorkItemsPageClientProps) {
   const [workItems, setWorkItems] = useState<WorkItemWithUnit[]>(estimate.workItems)
   const [isAddingItem, setIsAddingItem] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [editingItem, setEditingItem] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  const [showDatabaseSelection, setShowDatabaseSelection] = useState(false)
+  const [selectedDatabaseItems, setSelectedDatabaseItems] = useState<string[]>([])
   
   const [newItem, setNewItem] = useState<NewWorkItemForm>({
     description: "",
@@ -216,6 +220,69 @@ export function WorkItemsPageClient({ estimate, units, rates }: WorkItemsPageCli
     return item.quantity || 0
   }
 
+  const handleAddFromDatabase = async () => {
+    if (selectedDatabaseItems.length === 0) return
+
+    setIsSaving(true)
+    try {
+      const itemsToAdd = allWorkItems.filter(item => selectedDatabaseItems.includes(item.id))
+      const nextItemNo = workItems.length > 0 ? Math.max(...workItems.map(item => item.itemNo)) + 1 : 1
+
+      for (let i = 0; i < itemsToAdd.length; i++) {
+        const item = itemsToAdd[i]
+        const amount = calculateAmount({
+          description: item.description,
+          unitId: item.unitId,
+          rate: item.rate,
+          quantity: item.quantity,
+          length: item.length || 0,
+          width: item.width || 0,
+          height: item.height || 0,
+          materialCost: item.materialCost || 0,
+          laborCost: item.laborCost || 0,
+          equipmentCost: item.equipmentCost || 0,
+          overheadCost: item.overheadCost || 0,
+          discount: item.discount || 0,
+          profitMargin: item.profitMargin || 10,
+          notes: item.notes || "",
+          pageRef: item.pageRef || ""
+        })
+
+        const result = await createWorkItem({
+          estimateId: estimate.id,
+          itemNo: nextItemNo + i,
+          description: item.description,
+          unitId: item.unitId,
+          rate: item.rate,
+          quantity: item.quantity,
+          length: item.length,
+          width: item.width,
+          height: item.height,
+          amount: amount,
+          materialCost: item.materialCost,
+          laborCost: item.laborCost,
+          equipmentCost: item.equipmentCost,
+          overheadCost: item.overheadCost,
+          discount: item.discount,
+          profitMargin: item.profitMargin,
+          notes: item.notes,
+          pageRef: item.pageRef
+        })
+
+        if (result.success && result.data) {
+          setWorkItems(prev => [...prev, result.data as unknown as WorkItemWithUnit])
+        }
+      }
+
+      setSelectedDatabaseItems([])
+      setShowDatabaseSelection(false)
+    } catch (error) {
+      console.error("Error adding items from database:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
@@ -280,6 +347,110 @@ export function WorkItemsPageClient({ estimate, units, rates }: WorkItemsPageCli
           </CardContent>
         </Card>
       </div>
+
+      {/* Database Selection */}
+      <Card className="border-2 border-dashed border-blue-200">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-blue-500" />
+              Select from Database
+            </CardTitle>
+            <Button
+              variant="outline"
+              onClick={() => setShowDatabaseSelection(!showDatabaseSelection)}
+            >
+              {showDatabaseSelection ? <X className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+              {showDatabaseSelection ? "Cancel" : "Browse Items"}
+            </Button>
+          </div>
+        </CardHeader>
+        
+        {showDatabaseSelection && (
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Select work items from existing estimates to add to this project.
+              </p>
+              
+              <div className="max-h-96 overflow-y-auto border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">Select</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>From Estimate</TableHead>
+                      <TableHead>Unit</TableHead>
+                      <TableHead className="text-right">Rate (₹)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allWorkItems
+                      .filter(item => item.estimate.id !== estimate.id) // Exclude current estimate
+                      .map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedDatabaseItems.includes(item.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedDatabaseItems([...selectedDatabaseItems, item.id])
+                                } else {
+                                  setSelectedDatabaseItems(selectedDatabaseItems.filter(id => id !== item.id))
+                                }
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell className="max-w-[300px]">
+                            <div className="font-medium">{item.description}</div>
+                            {item.pageRef && (
+                              <div className="text-xs text-muted-foreground mt-1">Ref: {item.pageRef}</div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{item.estimate.title}</div>
+                              <div className="text-xs text-muted-foreground">{item.estimate.category}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{item.unit.unitSymbol}</TableCell>
+                          <TableCell className="text-right">{item.rate.toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {selectedDatabaseItems.length > 0 && (
+                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                  <span className="text-sm font-medium">
+                    {selectedDatabaseItems.length} item(s) selected
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setSelectedDatabaseItems([])}
+                    >
+                      Clear Selection
+                    </Button>
+                    <Button
+                      onClick={handleAddFromDatabase}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4 mr-2" />
+                      )}
+                      {isSaving ? "Adding..." : `Add ${selectedDatabaseItems.length} Item(s)`}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        )}
+      </Card>
 
       {/* Add New Item Form */}
       <Card className="border-2 border-dashed border-primary/20">

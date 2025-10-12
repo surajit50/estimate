@@ -16,7 +16,7 @@ import { WorkItemsPageClient } from "@/components/work-items-page-client"
 
 export default async function WorkItemsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const [estimate, units, rates] = await Promise.all([
+  const [estimate, units, rates, allWorkItems] = await Promise.all([
     prisma.estimate.findUnique({
       where: { id },
       include: {
@@ -34,6 +34,19 @@ export default async function WorkItemsPage({ params }: { params: Promise<{ id: 
     prisma.rateLibrary.findMany({
       include: {
         unit: true,
+      },
+      orderBy: { description: "asc" },
+    }),
+    prisma.workItem.findMany({
+      include: {
+        unit: true,
+        estimate: {
+          select: {
+            id: true,
+            title: true,
+            category: true,
+          }
+        }
       },
       orderBy: { description: "asc" },
     }),
@@ -122,7 +135,8 @@ export default async function WorkItemsPage({ params }: { params: Promise<{ id: 
         <WorkItemsPageClient 
           estimate={estimate} 
           units={units} 
-          rates={rates} 
+          rates={rates}
+          allWorkItems={allWorkItems}
         />
       </div>
     </div>
