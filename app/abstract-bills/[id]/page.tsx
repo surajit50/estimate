@@ -13,7 +13,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Download, FileSpreadsheet } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export default async function AbstractBillDetailPage({ 
   params 
@@ -87,7 +95,41 @@ export default async function AbstractBillDetailPage({
                 {abstractBill.measurementBook.title} • {abstractBill.measurementBook.estimate.title}
               </p>
             </div>
-            <Badge className={getStatusColor(abstractBill.status)}>{abstractBill.status}</Badge>
+            <div className="flex items-center gap-2">
+              <Badge className={getStatusColor(abstractBill.status)}>{abstractBill.status}</Badge>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Export Options</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href={`/api/abstract-bills/${id}/export/pdf`}
+                      target="_blank"
+                      className="cursor-pointer"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Export as PDF
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href={`/api/abstract-bills/${id}/export/excel`}
+                      target="_blank"
+                      className="cursor-pointer"
+                    >
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Export as Excel
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
           <Card>
