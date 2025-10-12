@@ -11,7 +11,26 @@ export async function createWorkItem(data: {
   unitId: string
   rate: number
   quantity: number
+  length?: number
+  width?: number
+  height?: number
   amount: number
+  
+  // Cost Breakdown
+  materialCost?: number
+  laborCost?: number
+  equipmentCost?: number
+  overheadCost?: number
+  
+  // Additional Fields
+  discount?: number
+  profitMargin?: number
+  notes?: string | null
+  
+  // Status and Priority
+  status?: string
+  priority?: string
+  
   subItems?: any[]
   subCategories?: any[]
 }) {
@@ -24,7 +43,19 @@ export async function createWorkItem(data: {
       unitId,
       rate,
       quantity,
+      length,
+      width,
+      height,
       amount,
+      materialCost,
+      laborCost,
+      equipmentCost,
+      overheadCost,
+      discount,
+      profitMargin,
+      notes,
+      status,
+      priority,
       subItems,
       subCategories,
     } = data
@@ -51,7 +82,26 @@ export async function createWorkItem(data: {
         unitId,
         rate: parseFloat(rate.toString()),
         quantity: calculatedQuantity,
+        length: length || 0,
+        width: width || 0,
+        height: height || 0,
         amount: calculatedAmount,
+        
+        // Cost Breakdown
+        materialCost: materialCost || 0,
+        laborCost: laborCost || 0,
+        equipmentCost: equipmentCost || 0,
+        overheadCost: overheadCost || 0,
+        
+        // Additional Fields
+        discount: discount || 0,
+        profitMargin: profitMargin || 10,
+        notes: notes?.trim() || null,
+        
+        // Status and Priority
+        status: status || "active",
+        priority: priority || "medium",
+        
         // For simplified work items, we don't create sub-items or sub-categories
         subItems: undefined,
         subCategories: undefined,
@@ -117,11 +167,50 @@ export async function updateWorkItem(id: string, data: {
   height?: number
   quantity?: number
   amount?: number
+  
+  // Cost Breakdown
+  materialCost?: number
+  laborCost?: number
+  equipmentCost?: number
+  overheadCost?: number
+  
+  // Additional Fields
+  discount?: number
+  profitMargin?: number
+  notes?: string | null
+  
+  // Status and Priority
+  status?: string
+  priority?: string
+  
   subItems?: any[]
   subCategories?: any[]
 }) {
   try {
-    const { pageRef, itemRef, itemNo, description, unitId, rate, length, width, height, quantity, amount, subItems, subCategories } = data
+    const { 
+      pageRef, 
+      itemRef, 
+      itemNo, 
+      description, 
+      unitId, 
+      rate, 
+      length, 
+      width, 
+      height, 
+      quantity, 
+      amount,
+      materialCost,
+      laborCost,
+      equipmentCost,
+      overheadCost,
+      discount,
+      profitMargin,
+      notes,
+      status,
+      priority,
+      subItems, 
+      subCategories 
+    } = data
 
     // Delete existing sub-items and sub-categories
     await prisma.subWorkItem.deleteMany({
@@ -145,6 +234,22 @@ export async function updateWorkItem(id: string, data: {
         height,
         quantity,
         amount,
+        
+        // Cost Breakdown
+        materialCost,
+        laborCost,
+        equipmentCost,
+        overheadCost,
+        
+        // Additional Fields
+        discount,
+        profitMargin,
+        notes,
+        
+        // Status and Priority
+        status,
+        priority,
+        
         subItems: subItems
           ? {
               create: subItems.map((subItem: any) => ({
