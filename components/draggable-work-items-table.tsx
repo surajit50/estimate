@@ -463,7 +463,7 @@ export function DraggableWorkItemsTable({
         if (Object.keys(updateData).length > 0) {
           const result = await updateWorkItem(itemId, updateData)
           if (result.success && result.data) {
-            onUpdate(result.data)
+            onUpdate(result.data as WorkItemWithUnit)
           }
         }
         return item
@@ -521,7 +521,7 @@ export function DraggableWorkItemsTable({
           }
           const result = await updateWorkItem(itemId, updateData)
           if (result.success && result.data) {
-            onUpdate(result.data)
+            onUpdate(result.data as WorkItemWithUnit)
           }
         }
       }
