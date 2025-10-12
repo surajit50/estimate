@@ -106,7 +106,7 @@ export default function NewAbstractBillPage() {
     const fetchUnits = async () => {
       try {
         const result = await getUnits()
-        if (result.success) {
+        if (result.success && result.data) {
           setUnits(result.data)
         }
       } catch (e) {
