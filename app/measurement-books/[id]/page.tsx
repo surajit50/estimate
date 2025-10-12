@@ -7,7 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { MeasurementEntriesTable } from "@/components/measurement-entries-table"
 import { AbstractBillsTable } from "@/components/abstract-bills-table"
-import { ArrowLeft, Edit, Calendar, MapPin, User, Building } from "lucide-react"
+import { ArrowLeft, Edit, Calendar, MapPin, User, Building, Download, FileSpreadsheet } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface MeasurementBookPageProps {
   params: Promise<{ id: string }>
@@ -94,15 +102,49 @@ export default async function MeasurementBookPage({ params }: MeasurementBookPag
                 Measurement book for {measurementBook.estimate.title}
               </p>
             </div>
-            <Badge className={getStatusColor(measurementBook.status)}>
-              {measurementBook.status}
-            </Badge>
-            <Link href={`/measurement-books/${measurementBook.id}/edit`}>
-              <Button variant="outline">
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Badge className={getStatusColor(measurementBook.status)}>
+                {measurementBook.status}
+              </Badge>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Export Options</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href={`/api/measurement-books/${id}/export/pdf`}
+                      target="_blank"
+                      className="cursor-pointer"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Export as PDF
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href={`/api/measurement-books/${id}/export/excel`}
+                      target="_blank"
+                      className="cursor-pointer"
+                    >
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Export as Excel
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Link href={`/measurement-books/${measurementBook.id}/edit`}>
+                <Button variant="outline">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+              </Link>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
