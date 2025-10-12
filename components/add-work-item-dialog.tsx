@@ -63,6 +63,9 @@ export default function AddWorkItemDialog({
       unitId: "",
       rate: 0,
       quantity: 0,
+      length: 0,
+      width: 0,
+      height: 0,
     },
   })
 
@@ -75,6 +78,9 @@ export default function AddWorkItemDialog({
         unitId: "",
         rate: 0,
         quantity: 0,
+        length: 0,
+        width: 0,
+        height: 0,
       })
       setError(null)
       setIsSubmitting(false)
@@ -107,6 +113,9 @@ export default function AddWorkItemDialog({
         unitId: values.unitId,
         rate: values.rate,
         quantity: values.quantity,
+        length: values.length || null,
+        width: values.width || null,
+        height: values.height || null,
         amount: amount,
         subItems: [],
         subCategories: [],
@@ -237,6 +246,46 @@ export default function AddWorkItemDialog({
                   </FormItem>
                 )}
               />
+            </div>
+
+            {/* Dimensions for m2 and m3 units */}
+            <div className="space-y-3">
+              <div className="text-sm font-medium text-muted-foreground">Dimensions (for m² and m³ units)</div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Length (m)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={form.watch("length") || ""}
+                    onChange={(e) => form.setValue("length", Number(e.target.value))}
+                    className="h-8"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Width (m)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={form.watch("width") || ""}
+                    onChange={(e) => form.setValue("width", Number(e.target.value))}
+                    className="h-8"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Height (m)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={form.watch("height") || ""}
+                    onChange={(e) => form.setValue("height", Number(e.target.value))}
+                    className="h-8"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Rate Library Quick Select */}

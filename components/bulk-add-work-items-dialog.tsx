@@ -38,9 +38,9 @@ interface WorkItemForm {
   unitId: string
   rate: number
   quantity: number
-  length?: number
-  width?: number
-  height?: number
+  length: number
+  width: number
+  height: number
 }
 
 interface BulkAddWorkItemsDialogProps {
@@ -78,16 +78,19 @@ export default function BulkAddWorkItemsDialog({
   // Reset form when dialog closes
   React.useEffect(() => {
     if (!open) {
-      setWorkItems([
-        {
-          id: "1",
-          pageRef: "",
-          description: "",
-          unitId: "",
-          rate: 0,
-          quantity: 0,
-        }
-      ])
+    setWorkItems([
+      {
+        id: "1",
+        pageRef: "",
+        description: "",
+        unitId: "",
+        rate: 0,
+        quantity: 0,
+        length: 0,
+        width: 0,
+        height: 0,
+      }
+    ])
       setError(null)
       setIsSubmitting(false)
     }
@@ -104,6 +107,9 @@ export default function BulkAddWorkItemsDialog({
         unitId: "",
         rate: 0,
         quantity: 0,
+        length: 0,
+        width: 0,
+        height: 0,
       }
     ])
   }
@@ -298,6 +304,46 @@ export default function BulkAddWorkItemsDialog({
                         Amount: <span className="font-medium text-foreground">
                           ₹{((item.rate || 0) * (item.quantity || 0)).toFixed(2)}
                         </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dimensions for m2 and m3 units */}
+                  <div className="mt-3">
+                    <label className="text-xs font-medium text-muted-foreground mb-2 block">Dimensions (for m² and m³ units)</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="text-xs text-muted-foreground">Length (m)</label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={item.length || ""}
+                          onChange={(e) => updateWorkItem(item.id, "length", Number(e.target.value))}
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Width (m)</label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={item.width || ""}
+                          onChange={(e) => updateWorkItem(item.id, "width", Number(e.target.value))}
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Height (m)</label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={item.height || ""}
+                          onChange={(e) => updateWorkItem(item.id, "height", Number(e.target.value))}
+                          className="h-7 text-xs"
+                        />
                       </div>
                     </div>
                   </div>

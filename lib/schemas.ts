@@ -41,6 +41,9 @@ export const simpleWorkItemSchema = z.object({
   unitId: nonEmptyString,
   rate: z.coerce.number().positive("Must be > 0"),
   quantity: z.coerce.number().positive("Must be > 0"),
+  length: z.coerce.number().optional().default(0),
+  width: z.coerce.number().optional().default(0),
+  height: z.coerce.number().optional().default(0),
 })
 
 export type SimpleWorkItemFormValues = z.infer<typeof simpleWorkItemSchema>
