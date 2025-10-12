@@ -18,10 +18,45 @@ model Estimate {
   location        String?
   activityCode    String?
   parameters      Json?            // Store project-specific parameters like dimensions, slopes, etc.
+  
+  // Client Information
+  clientName      String?
+  clientContact   String?
+  clientEmail     String?
+  clientAddress   String?
+  
+  // Project Timeline
+  startDate       DateTime?
+  endDate         DateTime?
+  duration        Int?             // Duration in days
+  
+  // Budget Tracking
+  estimatedBudget Float           @default(0.0)
+  actualCost      Float           @default(0.0)
+  variance        Float           @default(0.0)
+  
+  // Status and Priority
+  status          String           @default("draft") // draft, in-progress, completed, approved, rejected
+  priority        String           @default("medium") // low, medium, high, urgent
+  
+  // Tags for categorization
+  tags            String[]        @default([])
+  
+  // Tax Configuration
   cgstPercent     Float            @default(9.0)
   sgstPercent     Float            @default(9.0)
   cessPercent     Float            @default(1.0)
+  
+  // Additional Costs
   contingency     Float            @default(0.0)
+  overhead        Float            @default(0.0)
+  profitMargin    Float            @default(10.0)
+  discount        Float            @default(0.0)
+  
+  // Notes and Attachments
+  notes           String?
+  attachments     String[]         @default([])
+  
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   workItems       WorkItem[]
@@ -37,12 +72,30 @@ model WorkItem {
   description String
   unitId      String        @db.ObjectId
   unit        UnitMaster    @relation(fields: [unitId], references: [id])
+  
+  // Basic Calculations
   rate        Float
   length      Float         @default(0)
   width       Float         @default(0)
   height      Float         @default(0)
   quantity    Float
   amount      Float
+  
+  // Cost Breakdown
+  materialCost    Float     @default(0.0)
+  laborCost       Float     @default(0.0)
+  equipmentCost   Float     @default(0.0)
+  overheadCost    Float     @default(0.0)
+  
+  // Additional Fields
+  discount        Float     @default(0.0)
+  profitMargin    Float     @default(10.0)
+  notes           String?
+  
+  // Status and Priority
+  status          String    @default("active") // active, completed, cancelled
+  priority        String    @default("medium") // low, medium, high, urgent
+  
   subItems    SubWorkItem[]
   subCategories SubCategory[]
   createdAt   DateTime      @default(now())
