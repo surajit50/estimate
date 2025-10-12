@@ -174,7 +174,7 @@ export function WorkItemsPageClient({ estimate, units, rates }: WorkItemsPageCli
       const result = await updateWorkItem(itemId, updates)
       if (result.success && result.data) {
         setWorkItems(workItems.map(item => 
-          item.id === itemId ? result.data! : item
+          item.id === itemId ? result.data! as unknown as WorkItemWithUnit : item
         ))
         setEditingItem(null)
       }
