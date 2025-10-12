@@ -130,7 +130,7 @@ export default function AddWorkItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Add Work Item</DialogTitle>
           <DialogDescription>
@@ -140,20 +140,25 @@ export default function AddWorkItemDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="pageRef"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Page Reference</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., 1/2 a" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description *</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      rows={2}
+                      placeholder="Enter work item description"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
                 name="unitId"
@@ -168,7 +173,7 @@ export default function AddWorkItemDialog({
                         <SelectContent>
                           {units.map((unit) => (
                             <SelectItem key={unit.id} value={unit.id}>
-                              {unit.unitName} ({unit.unitSymbol})
+                              {unit.unitSymbol}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -178,27 +183,22 @@ export default function AddWorkItemDialog({
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="pageRef"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Page Ref</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., 1/2 a" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description *</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      rows={3}
-                      placeholder="Enter work item description"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
                 name="rate"
@@ -209,7 +209,7 @@ export default function AddWorkItemDialog({
                       <Input
                         type="number"
                         step="0.01"
-                        placeholder="Enter rate"
+                        placeholder="0.00"
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                       />
@@ -228,7 +228,7 @@ export default function AddWorkItemDialog({
                       <Input
                         type="number"
                         step="0.01"
-                        placeholder="Enter quantity"
+                        placeholder="0.00"
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                       />
@@ -242,23 +242,21 @@ export default function AddWorkItemDialog({
             {/* Rate Library Quick Select */}
             {rates.length > 0 && (
               <div className="space-y-2">
-                <FormLabel>Quick Select from Rate Library</FormLabel>
-                <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto">
-                  {rates.map((rate) => (
+                <FormLabel>Quick Select</FormLabel>
+                <div className="flex flex-wrap gap-2">
+                  {rates.slice(0, 6).map((rate) => (
                     <Button
                       key={rate.id}
                       type="button"
                       variant="outline"
-                      className="justify-between text-left h-auto p-3"
+                      size="sm"
+                      className="text-xs h-8"
                       onClick={() => handleRateSelect(rate.id)}
                     >
-                      <div className="flex-1">
-                        <div className="font-medium text-sm">{rate.description}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {units.find(u => u.id === rate.unitId)?.unitSymbol}
-                        </div>
-                      </div>
-                      <div className="text-sm font-medium">₹{rate.standardRate}</div>
+                      {rate.description.length > 15 
+                        ? `${rate.description.substring(0, 15)}...` 
+                        : rate.description
+                      } - ₹{rate.standardRate}
                     </Button>
                   ))}
                 </div>

@@ -188,11 +188,11 @@ export default function BulkAddWorkItemsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
+      <DialogContent className="max-w-5xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Bulk Add Work Items</DialogTitle>
           <DialogDescription>
-            Add multiple work items at once. Fill in the details for each item below.
+            Add multiple work items quickly. Each row represents one work item.
           </DialogDescription>
         </DialogHeader>
 
@@ -207,130 +207,125 @@ export default function BulkAddWorkItemsDialog({
             </Button>
           </div>
 
-          <ScrollArea className="h-[400px] pr-4">
-            <div className="space-y-4">
+          <ScrollArea className="h-[500px] pr-4">
+            <div className="space-y-3">
               {workItems.map((item, index) => (
-                <Card key={item.id} className="relative">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-medium">
-                        Item {index + 1}
-                      </CardTitle>
-                      <div className="flex items-center gap-2">
-                        <GripVertical className="h-4 w-4 text-muted-foreground" />
-                        {workItems.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeWorkItem(item.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium">Page Reference</label>
-                        <Input
-                          placeholder="e.g., 1/2 a"
-                          value={item.pageRef}
-                          onChange={(e) => updateWorkItem(item.id, "pageRef", e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Unit *</label>
-                        <Select
-                          value={item.unitId}
-                          onValueChange={(value) => updateWorkItem(item.id, "unitId", value)}
+                <div key={item.id} className="border rounded-lg p-4 bg-muted/20">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-muted-foreground">Item {index + 1}</h4>
+                    <div className="flex items-center gap-2">
+                      {workItems.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeWorkItem(item.id)}
                         >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select unit" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {units.map((unit) => (
-                              <SelectItem key={unit.id} value={unit.id}>
-                                {unit.unitName} ({unit.unitSymbol})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
                     </div>
-
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                     <div>
-                      <label className="text-sm font-medium">Description *</label>
-                      <Textarea
-                        rows={2}
-                        placeholder="Enter work item description"
+                      <label className="text-xs font-medium text-muted-foreground">Description *</label>
+                      <Input
+                        placeholder="Work item description"
                         value={item.description}
                         onChange={(e) => updateWorkItem(item.id, "description", e.target.value)}
+                        className="h-8"
                       />
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label className="text-sm font-medium">Rate (₹) *</label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="Enter rate"
-                          value={item.rate || ""}
-                          onChange={(e) => updateWorkItem(item.id, "rate", Number(e.target.value))}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Quantity *</label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="Enter quantity"
-                          value={item.quantity || ""}
-                          onChange={(e) => updateWorkItem(item.id, "quantity", Number(e.target.value))}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Amount (₹)</label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={((item.rate || 0) * (item.quantity || 0)).toFixed(2)}
-                          disabled
-                          className="bg-muted"
-                        />
+                    
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Unit *</label>
+                      <Select
+                        value={item.unitId}
+                        onValueChange={(value) => updateWorkItem(item.id, "unitId", value)}
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Select unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {units.map((unit) => (
+                            <SelectItem key={unit.id} value={unit.id}>
+                              {unit.unitSymbol}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Rate (₹) *</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={item.rate || ""}
+                        onChange={(e) => updateWorkItem(item.id, "rate", Number(e.target.value))}
+                        className="h-8"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Quantity *</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={item.quantity || ""}
+                        onChange={(e) => updateWorkItem(item.id, "quantity", Number(e.target.value))}
+                        className="h-8"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Page Ref</label>
+                      <Input
+                        placeholder="e.g., 1/2 a"
+                        value={item.pageRef}
+                        onChange={(e) => updateWorkItem(item.id, "pageRef", e.target.value)}
+                        className="h-8"
+                      />
+                    </div>
+                    
+                    <div className="flex items-end">
+                      <div className="text-xs text-muted-foreground">
+                        Amount: <span className="font-medium text-foreground">
+                          ₹{((item.rate || 0) * (item.quantity || 0)).toFixed(2)}
+                        </span>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Rate Library Quick Select */}
-                    {rates.length > 0 && (
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Quick Select from Rate Library</label>
-                        <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
-                          {rates.map((rate) => (
-                            <Button
-                              key={rate.id}
-                              type="button"
-                              variant="outline"
-                              className="justify-between text-left h-auto p-2 text-xs"
-                              onClick={() => handleRateSelect(item.id, rate.id)}
-                            >
-                              <div className="flex-1">
-                                <div className="font-medium">{rate.description}</div>
-                                <div className="text-muted-foreground">
-                                  {units.find(u => u.id === rate.unitId)?.unitSymbol}
-                                </div>
-                              </div>
-                              <div className="text-xs font-medium">₹{rate.standardRate}</div>
-                            </Button>
-                          ))}
-                        </div>
+                  {/* Quick Rate Selection */}
+                  {rates.length > 0 && (
+                    <div className="mt-3">
+                      <label className="text-xs font-medium text-muted-foreground mb-2 block">Quick Select</label>
+                      <div className="flex flex-wrap gap-1">
+                        {rates.slice(0, 5).map((rate) => (
+                          <Button
+                            key={rate.id}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-6 text-xs px-2"
+                            onClick={() => handleRateSelect(item.id, rate.id)}
+                          >
+                            {rate.description.length > 20 
+                              ? `${rate.description.substring(0, 20)}...` 
+                              : rate.description
+                            } - ₹{rate.standardRate}
+                          </Button>
+                        ))}
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           </ScrollArea>
