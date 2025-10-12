@@ -108,6 +108,7 @@ export async function createWorkItem(data: {
 export async function updateWorkItem(id: string, data: {
   pageRef?: string | null
   itemRef?: string
+  itemNo?: number
   description?: string
   unitId?: string
   rate?: number
@@ -120,7 +121,7 @@ export async function updateWorkItem(id: string, data: {
   subCategories?: any[]
 }) {
   try {
-    const { pageRef, itemRef, description, unitId, rate, length, width, height, quantity, amount, subItems, subCategories } = data
+    const { pageRef, itemRef, itemNo, description, unitId, rate, length, width, height, quantity, amount, subItems, subCategories } = data
 
     // Delete existing sub-items and sub-categories
     await prisma.subWorkItem.deleteMany({
@@ -135,6 +136,7 @@ export async function updateWorkItem(id: string, data: {
       where: { id },
       data: {
         pageRef,
+        itemNo,
         description,
         unitId,
         rate,
