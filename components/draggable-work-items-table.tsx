@@ -1,0 +1,810 @@
+"use client"
+
+import * as React from "react"
+import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Plus, Trash2, Edit, Check, X, Save, Loader2, GripVertical, FolderPlus } from "lucide-react"
+import AddWorkItemDialog from "@/components/add-work-item-dialog"
+import BulkAddWorkItemsDialog from "@/components/bulk-add-work-items-dialog"
+import { updateWorkItem, deleteWorkItem } from "@/lib/actions/work-items"
+import type { WorkItemWithUnit, UnitMasterType, RateLibraryType, SubCategoryType, SubWorkItemType } from "@/lib/types"
+
+// DnD Kit imports
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import {
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+
+interface WorkItemHeading {
+  id: string
+  title: string
+  position: number
+}
+
+interface WorkItemWithHeading extends WorkItemWithUnit {
+  headingId?: string
+}
+
+interface WorkItemsTableProps {
+  estimateId: string
+  workItems: WorkItemWithUnit[]
+  units: UnitMasterType[]
+  rates: RateLibraryType[]
+  onAdd: (item: WorkItemWithUnit) => void
+  onBulkAdd: (items: WorkItemWithUnit[]) => void
+  onUpdate: (item: WorkItemWithUnit) => void
+  onDelete: (id: string) => void
+  onReorder: (items: WorkItemWithUnit[]) => void
+  onAddHeading?: (heading: WorkItemHeading) => void
+  onUpdateHeading?: (heading: WorkItemHeading) => void
+  onDeleteHeading?: (id: string) => void
+}
+
+function isNumber(v: unknown): v is number {
+  return typeof v === "number" && !Number.isNaN(v)
+}
+
+function unitSymbolForItem(wi: WorkItemWithUnit, units: UnitMasterType[]) {
+  return wi.unit?.unitSymbol ?? units.find((u) => u.id === wi.unitId)?.unitSymbol ?? ""
+}
+
+function qtyFromSubItems(subItems?: SubWorkItemType[]) {
+  return (subItems ?? []).reduce((acc, s) => acc + (isNumber(s.quantity) ? s.quantity : 0), 0)
+}
+
+function qtyFromSubCategories(subCategories?: SubCategoryType[]) {
+  return (subCategories ?? []).reduce((acc, c) => acc + qtyFromSubItems(c.subItems), 0)
+}
+
+function deriveQuantity(wi: WorkItemWithUnit, units: UnitMasterType[]): number {
+  const unit = units.find(u => u.id === wi.unitId)
+  const unitSymbol = unit?.unitSymbol?.toLowerCase() || ""
+  
+  // For m2 units, calculate as length × width
+  if (unitSymbol === "m2" || unitSymbol === "m²") {
+    const length = isNumber(wi.length) ? wi.length : 0
+    const width = isNumber(wi.width) ? wi.width : 0
+    if (length > 0 && width > 0) {
+      return length * width
+    }
+  }
+  // For m3 units, calculate as length × width × height
+  else if (unitSymbol === "m3" || unitSymbol === "m³") {
+    const length = isNumber(wi.length) ? wi.length : 0
+    const width = isNumber(wi.width) ? wi.width : 0
+    const height = isNumber(wi.height) ? wi.height : 0
+    if (length > 0 && width > 0 && height > 0) {
+      return length * width * height
+    }
+  }
+  
+  // For other units, use the quantity directly
+  return isNumber(wi.quantity) ? wi.quantity : 0
+}
+
+function deriveAmount(wi: WorkItemWithUnit, qty: number, units: UnitMasterType[]): number {
+  const rate = isNumber(wi.rate) ? wi.rate : 0
+  const unit = units.find(u => u.id === wi.unitId)
+  const unitSymbol = unit?.unitSymbol?.toLowerCase() || ""
+  
+  // Calculate quantity based on unit type and dimensions
+  let calculatedQuantity = qty
+  
+  // For m2 units, calculate as length × width
+  if (unitSymbol === "m2" || unitSymbol === "m²") {
+    const length = isNumber(wi.length) ? wi.length : 0
+    const width = isNumber(wi.width) ? wi.width : 0
+    if (length > 0 && width > 0) {
+      calculatedQuantity = length * width
+    }
+  }
+  // For m3 units, calculate as length × width × height
+  else if (unitSymbol === "m3" || unitSymbol === "m³") {
+    const length = isNumber(wi.length) ? wi.length : 0
+    const width = isNumber(wi.width) ? wi.width : 0
+    const height = isNumber(wi.height) ? wi.height : 0
+    if (length > 0 && width > 0 && height > 0) {
+      calculatedQuantity = length * width * height
+    }
+  }
+  
+  return calculatedQuantity * rate
+}
+
+// Sortable Heading Row Component
+function SortableHeadingRow({ 
+  heading, 
+  onUpdate, 
+  onDelete 
+}: {
+  heading: WorkItemHeading
+  onUpdate: (heading: WorkItemHeading) => void
+  onDelete: (id: string) => void
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: heading.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <TableRow ref={setNodeRef} style={style} className="bg-muted/30">
+      <TableCell colSpan={8} className="font-semibold text-lg py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div
+              {...attributes}
+              {...listeners}
+              className="cursor-grab hover:cursor-grabbing p-1 rounded hover:bg-muted/50"
+            >
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <span>{heading.title}</span>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const newTitle = prompt("Edit heading:", heading.title)
+                if (newTitle && newTitle.trim()) {
+                  const updatedHeading = { ...heading, title: newTitle.trim() }
+                  onUpdate(updatedHeading)
+                }
+              }}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDelete(heading.id)}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        </div>
+      </TableCell>
+    </TableRow>
+  )
+}
+
+// Sortable Work Item Row Component
+function SortableWorkItemRow({ 
+  workItem, 
+  units, 
+  isSelected, 
+  onSelect, 
+  onDelete, 
+  onQuantityEdit, 
+  onQuantitySave, 
+  onQuantityCancel,
+  editingQuantity,
+  quantityValue,
+  setQuantityValue,
+  isUpdatingQuantity,
+  isDeletingItem
+}: {
+  workItem: WorkItemWithUnit
+  units: UnitMasterType[]
+  isSelected: boolean
+  onSelect: (id: string, checked: boolean) => void
+  onDelete: (id: string) => void
+  onQuantityEdit: (id: string, quantity: number) => void
+  onQuantitySave: (id: string) => void
+  onQuantityCancel: () => void
+  editingQuantity: string | null
+  quantityValue: string
+  setQuantityValue: (value: string) => void
+  isUpdatingQuantity: string | null
+  isDeletingItem: string | null
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: workItem.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  const symbol = unitSymbolForItem(workItem, units)
+  const displayQty = deriveQuantity(workItem, units)
+  const displayAmount = deriveAmount(workItem, displayQty, units)
+
+  return (
+    <TableRow 
+      ref={setNodeRef} 
+      style={style} 
+      className={`${isSelected ? "bg-muted/50" : ""} ${isDragging ? "shadow-lg" : ""}`}
+    >
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab hover:cursor-grabbing p-1 rounded hover:bg-muted/50"
+          >
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={(checked) => onSelect(workItem.id, checked as boolean)}
+          />
+        </div>
+      </TableCell>
+      <TableCell>{workItem.itemNo}</TableCell>
+      <TableCell className="max-w-[520px]">
+        <div className="font-medium">{workItem.description}</div>
+        {workItem.pageRef ? <div className="text-xs text-muted-foreground mt-1">Ref: {workItem.pageRef}</div> : null}
+      </TableCell>
+      <TableCell>{symbol}</TableCell>
+      <TableCell className="text-right">
+        {editingQuantity === workItem.id ? (
+          <div className="flex items-center gap-1">
+            <Input
+              type="number"
+              step="0.001"
+              value={quantityValue}
+              onChange={(e) => setQuantityValue(e.target.value)}
+              className="w-20 h-8"
+              autoFocus
+              disabled={isUpdatingQuantity === workItem.id}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') onQuantitySave(workItem.id)
+                if (e.key === 'Escape') onQuantityCancel()
+              }}
+            />
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              onClick={() => onQuantitySave(workItem.id)}
+              disabled={isUpdatingQuantity === workItem.id}
+            >
+              {isUpdatingQuantity === workItem.id ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Check className="h-3 w-3" />
+              )}
+            </Button>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              onClick={onQuantityCancel}
+              disabled={isUpdatingQuantity === workItem.id}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        ) : (
+          <div 
+            className="cursor-pointer hover:bg-muted/50 p-1 rounded"
+            onClick={() => onQuantityEdit(workItem.id, displayQty)}
+          >
+            {displayQty.toFixed(3)}
+          </div>
+        )}
+      </TableCell>
+      <TableCell className="text-right bg-muted/20">
+        <span className="text-muted-foreground">
+          {(workItem.rate ?? 0).toLocaleString("en-IN", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
+        </span>
+      </TableCell>
+      <TableCell className="text-right">
+        {displayAmount.toLocaleString("en-IN", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}
+      </TableCell>
+      <TableCell className="text-right">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={`Delete item ${workItem.itemNo}`}
+          disabled={isDeletingItem === workItem.id}
+          onClick={async () => {
+            onDelete(workItem.id)
+          }}
+        >
+          {isDeletingItem === workItem.id ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4 text-destructive" />
+          )}
+        </Button>
+      </TableCell>
+    </TableRow>
+  )
+}
+
+export function DraggableWorkItemsTable({ 
+  estimateId, 
+  workItems, 
+  units, 
+  rates, 
+  onAdd, 
+  onBulkAdd,
+  onUpdate, 
+  onDelete, 
+  onReorder,
+  onAddHeading, 
+  onUpdateHeading, 
+  onDeleteHeading 
+}: WorkItemsTableProps) {
+  const [open, setOpen] = React.useState(false)
+  const [bulkOpen, setBulkOpen] = React.useState(false)
+  const [selectedItems, setSelectedItems] = React.useState<Set<string>>(new Set())
+  const [bulkEditOpen, setBulkEditOpen] = React.useState(false)
+  const [bulkRate, setBulkRate] = React.useState("")
+  const [bulkDescription, setBulkDescription] = React.useState("")
+  const [headings, setHeadings] = React.useState<WorkItemHeading[]>([])
+  const [editingQuantity, setEditingQuantity] = React.useState<string | null>(null)
+  const [quantityValue, setQuantityValue] = React.useState("")
+  const [headingDialogOpen, setHeadingDialogOpen] = React.useState(false)
+  const [newHeadingTitle, setNewHeadingTitle] = React.useState("")
+  const [isUpdatingQuantity, setIsUpdatingQuantity] = React.useState<string | null>(null)
+  const [isDeletingItem, setIsDeletingItem] = React.useState<string | null>(null)
+  const [isBulkProcessing, setIsBulkProcessing] = React.useState(false)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  const nextItemNo = React.useMemo(() => {
+    const maxNo = workItems.reduce((m, wi) => Math.max(m, wi.itemNo ?? 0), 0)
+    return maxNo + 1
+  }, [workItems])
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (over && active.id !== over.id) {
+      // Check if we're dragging a heading
+      const isHeading = headings.some(h => h.id === active.id)
+      
+      if (isHeading) {
+        // Handle heading reordering
+        const oldIndex = headings.findIndex(h => h.id === active.id)
+        const newIndex = headings.findIndex(h => h.id === over.id)
+        
+        const reorderedHeadings = arrayMove(headings, oldIndex, newIndex)
+        setHeadings(reorderedHeadings)
+      } else {
+        // Handle work item reordering
+        const oldIndex = workItems.findIndex(item => item.id === active.id)
+        const newIndex = workItems.findIndex(item => item.id === over.id)
+        
+        const reorderedItems = arrayMove(workItems, oldIndex, newIndex)
+        onReorder(reorderedItems)
+      }
+    }
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedItems(new Set(workItems.map(item => item.id)))
+    } else {
+      setSelectedItems(new Set())
+    }
+  }
+
+  const handleSelectItem = (itemId: string, checked: boolean) => {
+    const newSelected = new Set(selectedItems)
+    if (checked) {
+      newSelected.add(itemId)
+    } else {
+      newSelected.delete(itemId)
+    }
+    setSelectedItems(newSelected)
+  }
+
+  const handleBulkUpdate = async () => {
+    setIsBulkProcessing(true)
+    try {
+      const updates = Array.from(selectedItems).map(async itemId => {
+        const item = workItems.find(wi => wi.id === itemId)
+        if (!item) return null
+
+        const updateData: any = {}
+        if (bulkDescription.trim()) {
+          updateData.description = bulkDescription.trim()
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          const result = await updateWorkItem(itemId, updateData)
+          if (result.success && result.data) {
+            onUpdate(result.data)
+          }
+        }
+        return item
+      })
+
+      const results = await Promise.all(updates)
+      const validItems = results.filter((item) => item !== null) as WorkItemWithUnit[]
+      
+      setSelectedItems(new Set())
+      setBulkEditOpen(false)
+      setBulkRate("")
+      setBulkDescription("")
+    } catch (error) {
+      console.error("Error updating work items:", error)
+    } finally {
+      setIsBulkProcessing(false)
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    setIsBulkProcessing(true)
+    try {
+      const deletePromises = Array.from(selectedItems).map(async itemId => {
+        const result = await deleteWorkItem(itemId)
+        if (result.success) {
+          onDelete(itemId)
+        }
+      })
+      
+      await Promise.all(deletePromises)
+      setSelectedItems(new Set())
+    } catch (error) {
+      console.error("Error deleting work items:", error)
+    } finally {
+      setIsBulkProcessing(false)
+    }
+  }
+
+  const handleQuantityEdit = (itemId: string, currentQuantity: number) => {
+    setEditingQuantity(itemId)
+    setQuantityValue(currentQuantity.toString())
+  }
+
+  const handleQuantitySave = async (itemId: string) => {
+    setIsUpdatingQuantity(itemId)
+    try {
+      const newQuantity = parseFloat(quantityValue)
+      if (!isNaN(newQuantity) && newQuantity >= 0) {
+        const item = workItems.find(wi => wi.id === itemId)
+        if (item) {
+          const updatedItem = { ...item, quantity: newQuantity }
+          const updateData = {
+            quantity: newQuantity,
+            amount: deriveAmount(updatedItem, newQuantity, units)
+          }
+          const result = await updateWorkItem(itemId, updateData)
+          if (result.success && result.data) {
+            onUpdate(result.data)
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error updating quantity:", error)
+    } finally {
+      setEditingQuantity(null)
+      setQuantityValue("")
+      setIsUpdatingQuantity(null)
+    }
+  }
+
+  const handleQuantityCancel = () => {
+    setEditingQuantity(null)
+    setQuantityValue("")
+  }
+
+  const handleAddHeading = () => {
+    if (newHeadingTitle.trim()) {
+      const newHeading: WorkItemHeading = {
+        id: `heading-${Date.now()}`,
+        title: newHeadingTitle.trim(),
+        position: headings.length
+      }
+      setHeadings(prev => [...prev, newHeading])
+      onAddHeading?.(newHeading)
+      setNewHeadingTitle("")
+      setHeadingDialogOpen(false)
+    }
+  }
+
+  const handleDeleteItem = async (itemId: string) => {
+    setIsDeletingItem(itemId)
+    try {
+      const result = await deleteWorkItem(itemId)
+      if (result.success) {
+        onDelete(itemId)
+      }
+    } finally {
+      setIsDeletingItem(null)
+    }
+  }
+
+  const isAllSelected = workItems.length > 0 && selectedItems.size === workItems.length
+  const isIndeterminate = selectedItems.size > 0 && selectedItems.size < workItems.length
+
+  // Set indeterminate state for select all checkbox
+  React.useEffect(() => {
+    const checkbox = document.querySelector('input[type="checkbox"][data-select-all]') as HTMLInputElement
+    if (checkbox) {
+      checkbox.indeterminate = isIndeterminate
+    }
+  }, [isIndeterminate])
+
+  return (
+    <div className="bg-white border rounded-lg">
+      <div className="flex items-center justify-between p-4 border-b">
+        <div>
+          <h3 className="text-lg font-semibold">Work Items</h3>
+          <p className="text-sm text-muted-foreground">Manage items, quantities, and amounts</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {selectedItems.size > 0 && (
+            <>
+              <Dialog open={bulkEditOpen} onOpenChange={setBulkEditOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={isBulkProcessing}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Selected ({selectedItems.size})
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Bulk Edit Selected Items</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="bulk-description">Description</Label>
+                      <Input
+                        id="bulk-description"
+                        placeholder="Enter new description"
+                        value={bulkDescription}
+                        onChange={(e) => setBulkDescription(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setBulkEditOpen(false)}>
+                        <X className="h-4 w-4 mr-2" />
+                        Cancel
+                      </Button>
+                      <Button onClick={handleBulkUpdate} disabled={isBulkProcessing}>
+                        {isBulkProcessing ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Check className="h-4 w-4 mr-2" />
+                        )}
+                        {isBulkProcessing ? "Applying..." : "Apply Changes"}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              <Button variant="destructive" size="sm" onClick={handleBulkDelete} disabled={isBulkProcessing}>
+                {isBulkProcessing ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-2" />
+                )}
+                {isBulkProcessing ? "Deleting..." : "Delete Selected"}
+              </Button>
+            </>
+          )}
+          <Dialog open={headingDialogOpen} onOpenChange={setHeadingDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <FolderPlus className="h-4 w-4 mr-2" />
+                Add Heading
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Work Item Heading</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="heading-title">Heading Title</Label>
+                  <Input
+                    id="heading-title"
+                    placeholder="e.g., Earth Work, Plaster, etc."
+                    value={newHeadingTitle}
+                    onChange={(e) => setNewHeadingTitle(e.target.value)}
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setHeadingDialogOpen(false)}>
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </Button>
+                  <Button onClick={handleAddHeading}>
+                    <Check className="h-4 w-4 mr-2" />
+                    Add Heading
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Button variant="outline" onClick={() => setBulkOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Bulk Add
+          </Button>
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Item
+          </Button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[50px]">
+                  <Checkbox
+                    checked={isAllSelected}
+                    onCheckedChange={handleSelectAll}
+                    data-select-all
+                  />
+                </TableHead>
+                <TableHead className="w-[90px]">Item No</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead className="w-[100px]">Unit</TableHead>
+                <TableHead className="w-[140px] text-right">Quantity</TableHead>
+                <TableHead className="w-[120px] text-right">Rate (₹)</TableHead>
+                <TableHead className="w-[160px] text-right">Amount (₹)</TableHead>
+                <TableHead className="w-[90px] text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {workItems.length === 0 && headings.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                    No work items yet. Click "Add Item" or "Bulk Add" to create items.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                <SortableContext 
+                  items={[...headings.map(h => h.id), ...workItems.map(item => item.id)]} 
+                  strategy={verticalListSortingStrategy}
+                >
+                  {/* Render headings and their items */}
+                  {headings.map((heading) => (
+                    <React.Fragment key={heading.id}>
+                      <SortableHeadingRow
+                        heading={heading}
+                        onUpdate={(updatedHeading) => {
+                          setHeadings(prev => prev.map(h => h.id === heading.id ? updatedHeading : h))
+                          onUpdateHeading?.(updatedHeading)
+                        }}
+                        onDelete={(id) => {
+                          setHeadings(prev => prev.filter(h => h.id !== id))
+                          onDeleteHeading?.(id)
+                        }}
+                      />
+                      {workItems
+                        .filter(wi => (wi as any).headingId === heading.id)
+                        .map((wi) => {
+                          const isSelected = selectedItems.has(wi.id)
+
+                          return (
+                            <SortableWorkItemRow
+                              key={wi.id}
+                              workItem={wi}
+                              units={units}
+                              isSelected={isSelected}
+                              onSelect={handleSelectItem}
+                              onDelete={handleDeleteItem}
+                              onQuantityEdit={handleQuantityEdit}
+                              onQuantitySave={handleQuantitySave}
+                              onQuantityCancel={handleQuantityCancel}
+                              editingQuantity={editingQuantity}
+                              quantityValue={quantityValue}
+                              setQuantityValue={setQuantityValue}
+                              isUpdatingQuantity={isUpdatingQuantity}
+                              isDeletingItem={isDeletingItem}
+                            />
+                          )
+                        })}
+                    </React.Fragment>
+                  ))}
+                  
+                  {/* Render items without headings */}
+                  {workItems
+                    .filter(wi => !(wi as any).headingId)
+                    .map((wi) => {
+                      const isSelected = selectedItems.has(wi.id)
+
+                      return (
+                        <SortableWorkItemRow
+                          key={wi.id}
+                          workItem={wi}
+                          units={units}
+                          isSelected={isSelected}
+                          onSelect={handleSelectItem}
+                          onDelete={handleDeleteItem}
+                          onQuantityEdit={handleQuantityEdit}
+                          onQuantitySave={handleQuantitySave}
+                          onQuantityCancel={handleQuantityCancel}
+                          editingQuantity={editingQuantity}
+                          quantityValue={quantityValue}
+                          setQuantityValue={setQuantityValue}
+                          isUpdatingQuantity={isUpdatingQuantity}
+                          isDeletingItem={isDeletingItem}
+                        />
+                      )
+                    })}
+                </SortableContext>
+              )}
+            </TableBody>
+          </Table>
+        </DndContext>
+      </div>
+
+      {/* Add Dialog */}
+      <AddWorkItemDialog
+        open={open}
+        onOpenChange={setOpen}
+        onAdd={(newItem: any) => {
+          onAdd(newItem)
+        }}
+        estimateId={estimateId}
+        units={units}
+        rates={rates}
+        nextItemNo={nextItemNo}
+      />
+
+      {/* Bulk Add Dialog */}
+      <BulkAddWorkItemsDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        onAdd={(newItems: any[]) => {
+          onBulkAdd(newItems)
+        }}
+        estimateId={estimateId}
+        units={units}
+        rates={rates}
+        nextItemNo={nextItemNo}
+      />
+    </div>
+  )
+}

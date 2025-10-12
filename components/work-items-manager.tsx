@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { WorkItemsTable } from "@/components/work-items-table"
+import { DraggableWorkItemsTable } from "@/components/draggable-work-items-table"
+import { updateWorkItem } from "@/lib/actions/work-items"
 import type { EstimateWithItems, UnitMasterType, RateLibraryType, WorkItemWithUnit } from "@/lib/types"
 
 interface WorkItemsManagerProps {
@@ -19,12 +20,38 @@ export function WorkItemsManager({ estimate, units, rates }: WorkItemsManagerPro
     setWorkItems([...workItems, newItem])
   }
 
+  const handleBulkAdd = (newItems: WorkItemWithUnit[]) => {
+    setWorkItems([...workItems, ...newItems])
+  }
+
   const handleUpdate = (updatedItem: WorkItemWithUnit) => {
     setWorkItems(workItems.map((item) => (item.id === updatedItem.id ? updatedItem : item)))
   }
 
   const handleDelete = (id: string) => {
     setWorkItems(workItems.filter((item) => item.id !== id))
+  }
+
+  const handleReorder = async (reorderedItems: WorkItemWithUnit[]) => {
+    // Update local state immediately for better UX
+    setWorkItems(reorderedItems)
+    
+    // Update item numbers in the database
+    try {
+      const updatePromises = reorderedItems.map((item, index) => {
+        const newItemNo = index + 1
+        if (item.itemNo !== newItemNo) {
+          return updateWorkItem(item.id, { itemNo: newItemNo })
+        }
+        return Promise.resolve()
+      })
+      
+      await Promise.all(updatePromises)
+    } catch (error) {
+      console.error("Error updating item order:", error)
+      // Revert on error
+      setWorkItems(workItems)
+    }
   }
 
   const totalAmount = workItems.reduce((sum, item) => sum + item.amount, 0)
@@ -50,14 +77,16 @@ export function WorkItemsManager({ estimate, units, rates }: WorkItemsManagerPro
         </CardHeader>
       </Card>
 
-      <WorkItemsTable
+      <DraggableWorkItemsTable
         estimateId={estimate.id}
         workItems={workItems}
         units={units}
         rates={rates}
         onAdd={handleAdd}
+        onBulkAdd={handleBulkAdd}
         onUpdate={handleUpdate}
         onDelete={handleDelete}
+        onReorder={handleReorder}
       />
     </div>
   )
