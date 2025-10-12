@@ -72,6 +72,9 @@ export default function BulkAddWorkItemsDialog({
       unitId: "",
       rate: 0,
       quantity: 0,
+      length: 0,
+      width: 0,
+      height: 0,
     }
   ])
 
