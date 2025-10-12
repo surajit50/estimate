@@ -229,26 +229,26 @@ export async function updateWorkItem(id: string, data: {
         description,
         unitId,
         rate,
-        length,
-        width,
-        height,
+        length: length ?? undefined,
+        width: width ?? undefined,
+        height: height ?? undefined,
         quantity,
         amount,
         
         // Cost Breakdown
-        materialCost,
-        laborCost,
-        equipmentCost,
-        overheadCost,
+        materialCost: materialCost ?? undefined,
+        laborCost: laborCost ?? undefined,
+        equipmentCost: equipmentCost ?? undefined,
+        overheadCost: overheadCost ?? undefined,
         
         // Additional Fields
-        discount,
-        profitMargin,
+        discount: discount ?? undefined,
+        profitMargin: profitMargin ?? undefined,
         notes,
         
         // Status and Priority
-        status,
-        priority,
+        status: status ?? undefined,
+        priority: priority ?? undefined,
         
         subItems: subItems
           ? {
