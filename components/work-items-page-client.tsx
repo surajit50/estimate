@@ -26,7 +26,7 @@ import {
   TrendingUp,
   AlertCircle
 } from "lucide-react"
-import { createWorkItem, updateWorkItem, deleteWorkItem } from "@/lib/actions/work-items"
+import { createWorkItem, updateWorkItem, deleteWorkItem, createWorkItemsFromDatabase } from "@/lib/actions/work-items"
 import type { EstimateWithItems, UnitMasterType, RateLibraryType, WorkItemWithUnit } from "@/lib/types"
 
 interface WorkItemsPageClientProps {
@@ -225,59 +225,28 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
 
     setIsSaving(true)
     try {
-      const itemsToAdd = allWorkItems.filter(item => selectedDatabaseItems.includes(item.id))
-      const nextItemNo = workItems.length > 0 ? Math.max(...workItems.map(item => item.itemNo)) + 1 : 1
+      console.log("Adding items from database:", selectedDatabaseItems)
+      console.log("Available work items:", allWorkItems.length)
+      
+      const result = await createWorkItemsFromDatabase({
+        estimateId: estimate.id,
+        sourceItemIds: selectedDatabaseItems
+      })
 
-      for (let i = 0; i < itemsToAdd.length; i++) {
-        const item = itemsToAdd[i]
-        const amount = calculateAmount({
-          description: item.description,
-          unitId: item.unitId,
-          rate: item.rate,
-          quantity: item.quantity,
-          length: item.length || 0,
-          width: item.width || 0,
-          height: item.height || 0,
-          materialCost: item.materialCost || 0,
-          laborCost: item.laborCost || 0,
-          equipmentCost: item.equipmentCost || 0,
-          overheadCost: item.overheadCost || 0,
-          discount: item.discount || 0,
-          profitMargin: item.profitMargin || 10,
-          notes: item.notes || "",
-          pageRef: item.pageRef || ""
-        })
-
-        const result = await createWorkItem({
-          estimateId: estimate.id,
-          itemNo: nextItemNo + i,
-          description: item.description,
-          unitId: item.unitId,
-          rate: item.rate,
-          quantity: item.quantity,
-          length: item.length,
-          width: item.width,
-          height: item.height,
-          amount: amount,
-          materialCost: item.materialCost,
-          laborCost: item.laborCost,
-          equipmentCost: item.equipmentCost,
-          overheadCost: item.overheadCost,
-          discount: item.discount,
-          profitMargin: item.profitMargin,
-          notes: item.notes,
-          pageRef: item.pageRef
-        })
-
-        if (result.success && result.data) {
-          setWorkItems(prev => [...prev, result.data as unknown as WorkItemWithUnit])
-        }
+      if (result.success && result.data) {
+        console.log("Successfully added items:", result.data.length)
+        // Refresh the page to show updated data
+        window.location.reload()
+      } else {
+        console.error("Failed to add items:", result.error)
+        alert(`Failed to add items: ${result.error}`)
       }
 
       setSelectedDatabaseItems([])
       setShowDatabaseSelection(false)
     } catch (error) {
       console.error("Error adding items from database:", error)
+      alert("Error adding items from database")
     } finally {
       setIsSaving(false)
     }
@@ -373,6 +342,13 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                 Select work items from existing estimates to add to this project.
               </p>
               
+              {/* Debug Info */}
+              <div className="text-xs text-muted-foreground bg-gray-50 p-2 rounded">
+                <p>Total work items in database: {allWorkItems.length}</p>
+                <p>Items from other estimates: {allWorkItems.filter(item => item.estimate.id !== estimate.id).length}</p>
+                <p>Current estimate ID: {estimate.id}</p>
+              </div>
+              
               <div className="max-h-96 overflow-y-auto border rounded-lg">
                 <Table>
                   <TableHeader>
@@ -387,36 +363,50 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                   <TableBody>
                     {allWorkItems
                       .filter(item => item.estimate.id !== estimate.id) // Exclude current estimate
-                      .map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedDatabaseItems.includes(item.id)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedDatabaseItems([...selectedDatabaseItems, item.id])
-                                } else {
-                                  setSelectedDatabaseItems(selectedDatabaseItems.filter(id => id !== item.id))
-                                }
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell className="max-w-[300px]">
-                            <div className="font-medium">{item.description}</div>
-                            {item.pageRef && (
-                              <div className="text-xs text-muted-foreground mt-1">Ref: {item.pageRef}</div>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{item.estimate.title}</div>
-                              <div className="text-xs text-muted-foreground">{item.estimate.category}</div>
+                      .length > 0 ? (
+                        allWorkItems
+                          .filter(item => item.estimate.id !== estimate.id)
+                          .map((item) => (
+                            <TableRow key={item.id}>
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedDatabaseItems.includes(item.id)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setSelectedDatabaseItems([...selectedDatabaseItems, item.id])
+                                    } else {
+                                      setSelectedDatabaseItems(selectedDatabaseItems.filter(id => id !== item.id))
+                                    }
+                                  }}
+                                />
+                              </TableCell>
+                              <TableCell className="max-w-[300px]">
+                                <div className="font-medium">{item.description}</div>
+                                {item.pageRef && (
+                                  <div className="text-xs text-muted-foreground mt-1">Ref: {item.pageRef}</div>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium">{item.estimate.title}</div>
+                                  <div className="text-xs text-muted-foreground">{item.estimate.category}</div>
+                                </div>
+                              </TableCell>
+                              <TableCell>{item.unit.unitSymbol}</TableCell>
+                              <TableCell className="text-right">{item.rate.toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                            <div className="flex flex-col items-center gap-2">
+                              <Package className="h-8 w-8 text-muted-foreground/50" />
+                              <p>No work items found in other estimates</p>
+                              <p className="text-xs">Create some work items in other estimates first</p>
                             </div>
                           </TableCell>
-                          <TableCell>{item.unit.unitSymbol}</TableCell>
-                          <TableCell className="text-right">{item.rate.toFixed(2)}</TableCell>
                         </TableRow>
-                      ))}
+                      )}
                   </TableBody>
                 </Table>
               </div>

@@ -303,6 +303,93 @@ export async function updateWorkItem(id: string, data: {
   }
 }
 
+export async function createWorkItemsFromDatabase(data: {
+  estimateId: string
+  sourceItemIds: string[]
+}) {
+  try {
+    const { estimateId, sourceItemIds } = data
+
+    if (!estimateId || sourceItemIds.length === 0) {
+      return { success: false, error: "Missing required fields" }
+    }
+
+    // Get the source work items
+    const sourceItems = await prisma.workItem.findMany({
+      where: { id: { in: sourceItemIds } },
+      include: { unit: true },
+    })
+
+    if (sourceItems.length === 0) {
+      return { success: false, error: "No source items found" }
+    }
+
+    // Get the next item numbers for the target estimate
+    const existingItems = await prisma.workItem.findMany({
+      where: { estimateId },
+      select: { itemNo: true },
+      orderBy: { itemNo: "desc" },
+    })
+
+    const nextItemNo = existingItems.length > 0 ? existingItems[0].itemNo + 1 : 1
+
+    // Create new work items based on source items
+    const newWorkItems = await Promise.all(
+      sourceItems.map(async (item, index) => {
+        const calculatedAmount = item.quantity * item.rate
+
+        return prisma.workItem.create({
+          data: {
+            estimateId,
+            itemNo: nextItemNo + index,
+            pageRef: item.pageRef,
+            description: item.description,
+            unitId: item.unitId,
+            rate: item.rate,
+            quantity: item.quantity,
+            length: item.length || 0,
+            width: item.width || 0,
+            height: item.height || 0,
+            amount: calculatedAmount,
+            
+            // Cost Breakdown
+            materialCost: item.materialCost || 0,
+            laborCost: item.laborCost || 0,
+            equipmentCost: item.equipmentCost || 0,
+            overheadCost: item.overheadCost || 0,
+            
+            // Additional Fields
+            discount: item.discount || 0,
+            profitMargin: item.profitMargin || 10,
+            notes: item.notes,
+            
+            // Status and Priority
+            status: item.status || "active",
+            priority: item.priority || "medium",
+          },
+          include: {
+            unit: true,
+            subItems: true,
+            subCategories: {
+              include: {
+                subItems: true,
+              },
+            },
+          },
+        })
+      })
+    )
+
+    revalidatePath(`/estimates/${estimateId}`)
+    revalidatePath(`/estimates/${estimateId}/work-items`)
+    
+    return { success: true, data: newWorkItems }
+  } catch (error) {
+    console.error("Error creating work items from database:", error)
+    return { success: false, error: "Failed to create work items from database" }
+  }
+}
+
 export async function deleteWorkItem(id: string) {
   try {
     const workItem = await prisma.workItem.findUnique({
