@@ -161,7 +161,7 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
         if (Object.keys(updateData).length > 0) {
           const result = await updateWorkItem(itemId, updateData)
           if (result.success && result.data) {
-            onUpdate(result.data)
+            onUpdate(result.data as unknown as WorkItemWithUnit)
           }
         }
         return item
@@ -219,7 +219,7 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
           }
           const result = await updateWorkItem(itemId, updateData)
           if (result.success && result.data) {
-            onUpdate(result.data)
+            onUpdate(result.data as unknown as WorkItemWithUnit)
           }
         }
       }
