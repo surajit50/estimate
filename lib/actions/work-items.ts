@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache"
 export async function createWorkItem(data: {
   estimateId: string
   itemNo: number
-  pageRef?: string
+  pageRef?: string | null
   description: string
   unitId: string
   rate: number
@@ -106,7 +106,7 @@ export async function createWorkItem(data: {
 }
 
 export async function updateWorkItem(id: string, data: {
-  pageRef?: string
+  pageRef?: string | null
   itemRef?: string
   description?: string
   unitId?: string
