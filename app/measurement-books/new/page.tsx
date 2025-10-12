@@ -18,6 +18,7 @@ import { DashboardHeader } from "@/components/dashboard-header"
 import { ArrowLeft, Save } from "lucide-react"
 import { toast } from "sonner"
 import { getEstimates } from "@/lib/actions/estimates"
+import { createMeasurementBook } from "@/lib/actions/measurement-books"
 
 interface Estimate {
   id: string
@@ -43,21 +44,14 @@ export default function NewMeasurementBookPage() {
     setLoading(true)
 
     try {
-      const response = await fetch("/api/measurement-books", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      })
+      const result = await createMeasurementBook(formData)
 
-      if (!response.ok) {
-        throw new Error("Failed to create measurement book")
+      if (result.success && result.data) {
+        toast.success("Measurement book created successfully!")
+        router.push(`/measurement-books/${result.data.id}`)
+      } else {
+        toast.error(result.error || "Failed to create measurement book")
       }
-
-      const measurementBook = await response.json()
-      toast.success("Measurement book created successfully!")
-      router.push(`/measurement-books/${measurementBook.id}`)
     } catch (error) {
       console.error("Error creating measurement book:", error)
       toast.error("Failed to create measurement book")
@@ -78,8 +72,13 @@ export default function NewMeasurementBookPage() {
     const fetchEstimates = async () => {
       try {
         const result = await getEstimates()
-        if (result.success) {
-          setEstimates(result.data)
+        if (result.success && result.data) {
+          const estimates = result.data.map(estimate => ({
+            id: estimate.id,
+            title: estimate.title,
+            category: estimate.category
+          }))
+          setEstimates(estimates)
         }
       } catch (error) {
         console.error("Error fetching estimates:", error)
