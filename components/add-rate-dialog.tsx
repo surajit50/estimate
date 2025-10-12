@@ -50,7 +50,7 @@ export function AddRateDialog({ open, onOpenChange, onAdd, units }: AddRateDialo
     try {
       const result = await createRate(values)
 
-      if (result.success) {
+      if (result.success && result.data) {
         onAdd(result.data)
         form.reset({ description: "", unitId: "", standardRate: 0, year: "" })
       } else {

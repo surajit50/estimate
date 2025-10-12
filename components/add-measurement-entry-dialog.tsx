@@ -70,7 +70,7 @@ export function AddMeasurementEntryDialog({
     const fetchUnits = async () => {
       try {
         const result = await getUnits()
-        if (result.success) {
+        if (result.success && result.data) {
           setUnits(result.data)
         }
       } catch (error) {
@@ -90,8 +90,8 @@ export function AddMeasurementEntryDialog({
 
         // Fetch estimate with work items (includes unit and rate)
         const result = await getEstimate(estimateId)
-        if (result.success) {
-          setWorkItems(result.data?.workItems || [])
+        if (result.success && result.data) {
+          setWorkItems(result.data.workItems || [])
         }
       } catch (error) {
         console.error("Error fetching work items:", error)

@@ -42,7 +42,7 @@ export function AddUnitDialog({ open, onOpenChange, onAdd }: AddUnitDialogProps)
     try {
       const result = await createUnit(values)
 
-      if (result.success) {
+      if (result.success && result.data) {
         onAdd(result.data)
         form.reset({ unitName: "", unitSymbol: "" })
       } else {

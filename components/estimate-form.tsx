@@ -58,7 +58,7 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
         result = await createEstimate(values)
       }
 
-      if (result.success) {
+      if (result.success && result.data) {
         const estimateId = estimate ? estimate.id : result.data.id
         router.push(`/estimates/${estimateId}/work-items`)
       } else {
