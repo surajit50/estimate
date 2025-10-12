@@ -158,7 +158,7 @@ function SortableHeadingRow({
 
   return (
     <TableRow ref={setNodeRef} style={style} className="bg-muted/30">
-      <TableCell colSpan={8} className="font-semibold text-lg py-4">
+      <TableCell colSpan={11} className="font-semibold text-lg py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div
@@ -274,6 +274,15 @@ function SortableWorkItemRow({
         {workItem.pageRef ? <div className="text-xs text-muted-foreground mt-1">Ref: {workItem.pageRef}</div> : null}
       </TableCell>
       <TableCell>{symbol}</TableCell>
+      <TableCell className="text-right">
+        {(workItem.length ?? 0).toFixed(2)}
+      </TableCell>
+      <TableCell className="text-right">
+        {(workItem.width ?? 0).toFixed(2)}
+      </TableCell>
+      <TableCell className="text-right">
+        {(workItem.height ?? 0).toFixed(2)}
+      </TableCell>
       <TableCell className="text-right">
         {editingQuantity === workItem.id ? (
           <div className="flex items-center gap-1">
@@ -689,6 +698,9 @@ export function DraggableWorkItemsTable({
                 <TableHead className="w-[90px]">Item No</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead className="w-[100px]">Unit</TableHead>
+                <TableHead className="w-[80px] text-right">Length</TableHead>
+                <TableHead className="w-[80px] text-right">Width</TableHead>
+                <TableHead className="w-[80px] text-right">Height</TableHead>
                 <TableHead className="w-[140px] text-right">Quantity</TableHead>
                 <TableHead className="w-[120px] text-right">Rate (₹)</TableHead>
                 <TableHead className="w-[160px] text-right">Amount (₹)</TableHead>
@@ -698,7 +710,7 @@ export function DraggableWorkItemsTable({
             <TableBody>
               {workItems.length === 0 && headings.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={11} className="text-center text-muted-foreground">
                     No work items yet. Click "Add Item" or "Bulk Add" to create items.
                   </TableCell>
                 </TableRow>

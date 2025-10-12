@@ -375,6 +375,9 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
               <TableHead className="w-[90px]">Item No</TableHead>
               <TableHead>Description</TableHead>
               <TableHead className="w-[100px]">Unit</TableHead>
+              <TableHead className="w-[80px] text-right">Length</TableHead>
+              <TableHead className="w-[80px] text-right">Width</TableHead>
+              <TableHead className="w-[80px] text-right">Height</TableHead>
               <TableHead className="w-[140px] text-right">Quantity</TableHead>
               <TableHead className="w-[120px] text-right">Rate (₹)</TableHead>
               <TableHead className="w-[160px] text-right">Amount (₹)</TableHead>
@@ -384,7 +387,7 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
           <TableBody>
             {workItems.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground">
+                <TableCell colSpan={11} className="text-center text-muted-foreground">
                   No work items yet. Click "Add Work Item" to create one.
                 </TableCell>
               </TableRow>
@@ -394,7 +397,7 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
                 {headings.map((heading) => (
                   <React.Fragment key={heading.id}>
                     <TableRow className="bg-muted/30">
-                      <TableCell colSpan={8} className="font-semibold text-lg py-4">
+                      <TableCell colSpan={11} className="font-semibold text-lg py-4">
                         <div className="flex items-center justify-between">
                           <span>{heading.title}</span>
                           <div className="flex gap-2">
@@ -448,6 +451,15 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
                               {wi.pageRef ? <div className="text-xs text-muted-foreground mt-1">Ref: {wi.pageRef}</div> : null}
                             </TableCell>
                             <TableCell>{symbol}</TableCell>
+                            <TableCell className="text-right">
+                              {(wi.length ?? 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {(wi.width ?? 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {(wi.height ?? 0).toFixed(2)}
+                            </TableCell>
                             <TableCell className="text-right">
                               {editingQuantity === wi.id ? (
                                 <div className="flex items-center gap-1">
@@ -562,6 +574,15 @@ export function WorkItemsTable({ estimateId, workItems, units, rates, onAdd, onU
                           {wi.pageRef ? <div className="text-xs text-muted-foreground mt-1">Ref: {wi.pageRef}</div> : null}
                         </TableCell>
                         <TableCell>{symbol}</TableCell>
+                        <TableCell className="text-right">
+                          {(wi.length ?? 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {(wi.width ?? 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {(wi.height ?? 0).toFixed(2)}
+                        </TableCell>
                         <TableCell className="text-right">
                           {editingQuantity === wi.id ? (
                             <div className="flex items-center gap-1">
