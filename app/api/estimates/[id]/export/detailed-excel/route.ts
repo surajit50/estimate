@@ -54,13 +54,13 @@ export async function GET(
         item.subCategories.forEach((subCat) => {
           detailedData.push({
             'Item No': '',
-            'Description': subCat.name,
+            'Description': subCat.categoryName,
             'Unit': '',
             'Quantity': '',
             'Rate (₹)': '',
             'Amount (₹)': '',
             'Type': 'Sub Category',
-            'Sub Category': subCat.name,
+            'Sub Category': subCat.categoryName,
             'Sub Item': '',
           })
 
@@ -74,7 +74,7 @@ export async function GET(
                 'Rate (₹)': subItem.rate || 0,
                 'Amount (₹)': subItem.amount || 0,
                 'Type': 'Sub Item',
-                'Sub Category': subCat.name,
+                'Sub Category': subCat.categoryName,
                 'Sub Item': subItem.description,
               })
             })

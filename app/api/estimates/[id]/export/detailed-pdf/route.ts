@@ -83,7 +83,7 @@ export async function GET(
           }
           
           doc.setFontSize(9)
-          doc.text(`  ${subCat.name}`, 30, currentY)
+          doc.text(`  ${subCat.categoryName}`, 30, currentY)
           currentY += 10
 
           // Sub-items
