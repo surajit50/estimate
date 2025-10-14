@@ -29,13 +29,13 @@ export default async function WorkItemsPage({ params }: { params: Promise<{ id: 
       },
     }),
     prisma.unitMaster.findMany({
-      orderBy: { unitName: "asc" },
+      orderBy: { createdAt: "desc" },
     }),
     prisma.rateLibrary.findMany({
       include: {
         unit: true,
       },
-      orderBy: { description: "asc" },
+      orderBy: { createdAt: "desc" },
     }),
     prisma.workItem.findMany({
       include: {

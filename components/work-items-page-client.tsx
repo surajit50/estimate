@@ -93,23 +93,33 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
 
   const nextItemNo = workItems.length > 0 ? Math.max(...workItems.map(item => item.itemNo)) + 1 : 1
 
-  const calculateAmount = (item: NewWorkItemForm) => {
+  const isAreaUnit = (unitSymbol: string) => {
+    const s = unitSymbol.trim().toLowerCase()
+    return s === "m2" || s === "m²" || s === "sqm" || s === "sq m" || s === "sq. m"
+  }
+
+  const isVolumeUnit = (unitSymbol: string) => {
+    const s = unitSymbol.trim().toLowerCase()
+    return s === "m3" || s === "m³" || s === "cum" || s === "cu m" || s === "cu. m"
+  }
+
+  const computeQuantityForUnit = (item: { unitId: string; length: number; width: number; height: number; quantity: number; }) => {
     const unit = units.find(u => u.id === item.unitId)
-    const unitSymbol = unit?.unitSymbol?.toLowerCase() || ""
-    
-    let calculatedQuantity = item.quantity
-    
-    // Calculate quantity based on unit type
-    if (unitSymbol === "m2" || unitSymbol === "m²") {
-      calculatedQuantity = item.length * item.width
-    } else if (unitSymbol === "m3" || unitSymbol === "m³") {
-      calculatedQuantity = item.length * item.width * item.height
+    const unitSymbol = unit?.unitSymbol || ""
+    if (isAreaUnit(unitSymbol)) {
+      return (item.length || 0) * (item.width || 0)
     }
-    
+    if (isVolumeUnit(unitSymbol)) {
+      return (item.length || 0) * (item.width || 0) * (item.height || 0)
+    }
+    return item.quantity || 0
+  }
+
+  const calculateAmount = (item: NewWorkItemForm) => {
+    const calculatedQuantity = computeQuantityForUnit(item)
     const baseAmount = calculatedQuantity * item.rate
     const discountAmount = (baseAmount * item.discount) / 100
     const profitAmount = ((baseAmount - discountAmount) * item.profitMargin) / 100
-    
     return baseAmount - discountAmount + profitAmount
   }
 
@@ -121,6 +131,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
     setIsSaving(true)
     try {
       const amount = calculateAmount(newItem)
+      const calculatedQuantity = computeQuantityForUnit(newItem)
       
       const result = await createWorkItem({
         estimateId: estimate.id,
@@ -128,7 +139,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
         description: newItem.description,
         unitId: newItem.unitId,
         rate: newItem.rate,
-        quantity: newItem.quantity,
+        quantity: calculatedQuantity,
         length: newItem.length,
         width: newItem.width,
         height: newItem.height,
@@ -208,17 +219,27 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
   }
 
   const getCalculatedQuantity = (item: WorkItemWithUnit) => {
-    const unit = units.find(u => u.id === item.unitId)
-    const unitSymbol = unit?.unitSymbol?.toLowerCase() || ""
-    
-    if (unitSymbol === "m2" || unitSymbol === "m²") {
-      return (item.length || 0) * (item.width || 0)
-    } else if (unitSymbol === "m3" || unitSymbol === "m³") {
-      return (item.length || 0) * (item.width || 0) * (item.height || 0)
-    }
-    
-    return item.quantity || 0
+    return computeQuantityForUnit({
+      unitId: item.unitId,
+      length: item.length,
+      width: item.width,
+      height: item.height,
+      quantity: item.quantity,
+    })
   }
+
+  // Keep quantity in sync for computed units while editing the new item form
+  useEffect(() => {
+    if (!newItem.unitId) return
+    const unit = units.find(u => u.id === newItem.unitId)
+    const unitSymbol = unit?.unitSymbol || ""
+    if (isAreaUnit(unitSymbol) || isVolumeUnit(unitSymbol)) {
+      const q = computeQuantityForUnit(newItem)
+      if (q !== newItem.quantity) {
+        setNewItem({ ...newItem, quantity: q })
+      }
+    }
+  }, [newItem.unitId, newItem.length, newItem.width, newItem.height])
 
   const handleAddFromDatabase = async () => {
     if (selectedDatabaseItems.length === 0) return
@@ -523,10 +544,30 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                     id="quantity"
                     type="number"
                     step="0.001"
-                    placeholder="0.000"
+                    placeholder={(() => {
+                      const unit = units.find(u => u.id === newItem.unitId)
+                      const s = unit?.unitSymbol || ""
+                      return isAreaUnit(s) || isVolumeUnit(s) ? "Auto-calculated" : "0.000"
+                    })()}
                     value={newItem.quantity || ""}
+                    disabled={(() => {
+                      const unit = units.find(u => u.id === newItem.unitId)
+                      const s = unit?.unitSymbol || ""
+                      return isAreaUnit(s) || isVolumeUnit(s)
+                    })()}
                     onChange={(e) => setNewItem({ ...newItem, quantity: parseFloat(e.target.value) || 0 })}
                   />
+                  {(() => {
+                    const unit = units.find(u => u.id === newItem.unitId)
+                    const s = unit?.unitSymbol || ""
+                    if (isAreaUnit(s)) {
+                      return <p className="text-xs text-muted-foreground">Quantity = Length × Width (auto)</p>
+                    }
+                    if (isVolumeUnit(s)) {
+                      return <p className="text-xs text-muted-foreground">Quantity = Length × Width × Height (auto)</p>
+                    }
+                    return null
+                  })()}
                 </div>
               </div>
 
