@@ -128,6 +128,36 @@ export async function updateEstimate(id: string, data: {
   }
 }
 
+export async function freezeEstimate(id: string) {
+  try {
+    const estimate = await prisma.estimate.update({
+      where: { id },
+      data: { isFrozen: true },
+    })
+    revalidatePath(`/estimates/${id}`)
+    revalidatePath(`/estimates/${id}/work-items`)
+    return { success: true, data: estimate }
+  } catch (error) {
+    console.error("Error freezing estimate:", error)
+    return { success: false, error: "Failed to freeze estimate" }
+  }
+}
+
+export async function unfreezeEstimate(id: string) {
+  try {
+    const estimate = await prisma.estimate.update({
+      where: { id },
+      data: { isFrozen: false },
+    })
+    revalidatePath(`/estimates/${id}`)
+    revalidatePath(`/estimates/${id}/work-items`)
+    return { success: true, data: estimate }
+  } catch (error) {
+    console.error("Error unfreezing estimate:", error)
+    return { success: false, error: "Failed to unfreeze estimate" }
+  }
+}
+
 export async function deleteEstimate(id: string) {
   try {
     await prisma.estimate.delete({

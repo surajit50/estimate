@@ -64,6 +64,12 @@ export async function createWorkItem(data: {
     if (!estimateId || !description || !unitId || !rate || quantity === undefined) {
       return { success: false, error: "Missing required fields: estimateId, description, unitId, rate, quantity" }
     }
+    // Block when estimate is frozen
+    const est = await prisma.estimate.findUnique({ where: { id: estimateId }, select: { isFrozen: true } })
+    if (est?.isFrozen) {
+      return { success: false, error: "Estimate is finalized and cannot be modified" }
+    }
+
 
     if (rate < 0 || quantity < 0) {
       return { success: false, error: "Rate and quantity must be positive numbers" }
@@ -187,6 +193,15 @@ export async function updateWorkItem(id: string, data: {
   subCategories?: any[]
 }) {
   try {
+    // Block when estimate is frozen
+    const wi = await prisma.workItem.findUnique({ where: { id }, select: { estimateId: true } })
+    if (wi?.estimateId) {
+      const est = await prisma.estimate.findUnique({ where: { id: wi.estimateId }, select: { isFrozen: true } })
+      if (est?.isFrozen) {
+        return { success: false, error: "Estimate is finalized and cannot be modified" }
+      }
+    }
+
     const { 
       pageRef, 
       itemRef, 
@@ -314,6 +329,12 @@ export async function createWorkItemsFromDatabase(data: {
       return { success: false, error: "Missing required fields" }
     }
 
+    // Block when estimate is frozen
+    const est = await prisma.estimate.findUnique({ where: { id: estimateId }, select: { isFrozen: true } })
+    if (est?.isFrozen) {
+      return { success: false, error: "Estimate is finalized and cannot be modified" }
+    }
+
     // Get the source work items
     const sourceItems = await prisma.workItem.findMany({
       where: { id: { in: sourceItemIds } },
@@ -396,6 +417,14 @@ export async function deleteWorkItem(id: string) {
       where: { id },
       select: { estimateId: true },
     })
+
+    // Block when estimate is frozen
+    if (workItem?.estimateId) {
+      const est = await prisma.estimate.findUnique({ where: { id: workItem.estimateId }, select: { isFrozen: true } })
+      if (est?.isFrozen) {
+        return { success: false, error: "Estimate is finalized and cannot be modified" }
+      }
+    }
 
     await prisma.workItem.delete({
       where: { id },

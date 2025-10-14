@@ -128,6 +128,11 @@ export default async function WorkItemsPage({ params }: { params: Promise<{ id: 
               <Link href={`/estimates/${id}/abstract`}>
                 <Button>View Abstract</Button>
               </Link>
+              {estimate.isFrozen ? (
+                <div className="ml-2">
+                  <span className="px-2 py-1 rounded bg-green-100 text-green-700 text-xs font-medium">Finalized</span>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

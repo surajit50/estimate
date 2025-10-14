@@ -27,6 +27,7 @@ import {
   AlertCircle
 } from "lucide-react"
 import { createWorkItem, updateWorkItem, deleteWorkItem, createWorkItemsFromDatabase } from "@/lib/actions/work-items"
+import { freezeEstimate, unfreezeEstimate } from "@/lib/actions/estimates"
 import type { EstimateWithItems, UnitMasterType, RateLibraryType, WorkItemWithUnit } from "@/lib/types"
 
 interface WorkItemsPageClientProps {
@@ -63,6 +64,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [showDatabaseSelection, setShowDatabaseSelection] = useState(false)
   const [selectedDatabaseItems, setSelectedDatabaseItems] = useState<string[]>([])
+  const [isFrozen, setIsFrozen] = useState<boolean>(!!(estimate as any).isFrozen)
   
   const [newItem, setNewItem] = useState<NewWorkItemForm>({
     description: "",
@@ -124,6 +126,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
   }
 
   const handleAddItem = async () => {
+    if (isFrozen) return
     if (!newItem.description || !newItem.unitId || newItem.rate <= 0) {
       return
     }
@@ -184,6 +187,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
   }
 
   const handleUpdateItem = async (itemId: string, updates: Partial<WorkItemWithUnit>) => {
+    if (isFrozen) return
     setIsUpdating(itemId)
     try {
       const result = await updateWorkItem(itemId, updates)
@@ -201,6 +205,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
   }
 
   const handleDeleteItem = async (itemId: string) => {
+    if (isFrozen) return
     setIsDeleting(itemId)
     try {
       const result = await deleteWorkItem(itemId)
@@ -242,6 +247,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
   }, [newItem.unitId, newItem.length, newItem.width, newItem.height])
 
   const handleAddFromDatabase = async () => {
+    if (isFrozen) return
     if (selectedDatabaseItems.length === 0) return
 
     setIsSaving(true)
@@ -275,6 +281,32 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
 
   return (
     <div className="space-y-6">
+      {/* Finalize / Unfreeze Controls */}
+      <div className="flex items-center justify-between">
+        <div />
+        <div className="flex items-center gap-2">
+          {isFrozen ? (
+            <Button
+              variant="outline"
+              onClick={async () => {
+                const res = await unfreezeEstimate(estimate.id)
+                if (res.success) setIsFrozen(false)
+              }}
+            >
+              Unfreeze Estimate
+            </Button>
+          ) : (
+            <Button
+              onClick={async () => {
+                const res = await freezeEstimate(estimate.id)
+                if (res.success) setIsFrozen(true)
+              }}
+            >
+              Finalize Estimate
+            </Button>
+          )}
+        </div>
+      </div>
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
@@ -349,6 +381,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
             <Button
               variant="outline"
               onClick={() => setShowDatabaseSelection(!showDatabaseSelection)}
+              disabled={isFrozen}
             >
               {showDatabaseSelection ? <X className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
               {showDatabaseSelection ? "Cancel" : "Browse Items"}
@@ -441,12 +474,13 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                     <Button
                       variant="outline"
                       onClick={() => setSelectedDatabaseItems([])}
+                      disabled={isFrozen}
                     >
                       Clear Selection
                     </Button>
                     <Button
                       onClick={handleAddFromDatabase}
-                      disabled={isSaving}
+                      disabled={isSaving || isFrozen}
                     >
                       {isSaving ? (
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -474,6 +508,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
             <Button
               variant="outline"
               onClick={() => setIsAddingItem(!isAddingItem)}
+              disabled={isFrozen}
             >
               {isAddingItem ? <X className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
               {isAddingItem ? "Cancel" : "Add Item"}
@@ -481,7 +516,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
           </div>
         </CardHeader>
         
-        {isAddingItem && (
+        {isAddingItem && !isFrozen && (
           <CardContent>
             <form ref={formRef} className="space-y-6">
               {/* Basic Information */}
@@ -749,7 +784,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                 <Button
                   type="button"
                   onClick={handleAddItem}
-                  disabled={isSaving || !newItem.description || !newItem.unitId || newItem.rate <= 0}
+                  disabled={isFrozen || isSaving || !newItem.description || !newItem.unitId || newItem.rate <= 0}
                 >
                   {isSaving ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -829,7 +864,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                             variant="ghost"
                             size="sm"
                             onClick={() => setEditingItem(editingItem === item.id ? null : item.id)}
-                            disabled={isUpdating === item.id}
+                            disabled={isFrozen || isUpdating === item.id}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -837,7 +872,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteItem(item.id)}
-                            disabled={isDeleting === item.id}
+                            disabled={isFrozen || isDeleting === item.id}
                           >
                             {isDeleting === item.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />

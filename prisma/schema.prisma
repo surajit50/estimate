@@ -18,6 +18,7 @@ model Estimate {
   location        String?
   activityCode    String?
   parameters      Json?            // Store project-specific parameters like dimensions, slopes, etc.
+  isFrozen        Boolean          @default(false)
 
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
