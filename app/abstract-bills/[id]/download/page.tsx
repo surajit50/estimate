@@ -9,9 +9,7 @@ export default async function AbstractBillDownloadPage({ params }: { params: Pro
     include: {
       measurementBook: {
         include: {
-          estimate: {
-            select: { id: true, title: true, category: true, cgstPercent: true, sgstPercent: true, cessPercent: true, contingency: true },
-          },
+          estimate: true,
         },
       },
       items: {
@@ -30,9 +28,9 @@ export default async function AbstractBillDownloadPage({ params }: { params: Pro
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(amount)
 
   const total = abstractBill.items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0)
-  const cgstPercent = Number(abstractBill.measurementBook.estimate?.cgstPercent ?? 0)
-  const sgstPercent = Number(abstractBill.measurementBook.estimate?.sgstPercent ?? 0)
-  const cessPercent = Number(abstractBill.measurementBook.estimate?.cessPercent ?? 0)
+  const cgstPercent = 0
+  const sgstPercent = 0
+  const cessPercent = 0
   const cgst = (total * cgstPercent) / 100
   const sgst = (total * sgstPercent) / 100
   const cess = (total * cessPercent) / 100
