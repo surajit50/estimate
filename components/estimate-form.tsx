@@ -51,9 +51,23 @@ interface EstimateFormProps {
     discount?: number
     notes?: string | null
   }
+  hideClientInfo?: boolean
+  hideProjectTimeline?: boolean
+  hideBudgetStatus?: boolean
+  hideTags?: boolean
+  hideAdditionalCosts?: boolean
+  hideNotes?: boolean
 }
 
-export function EstimateForm({ estimate }: EstimateFormProps) {
+export function EstimateForm({
+  estimate,
+  hideClientInfo = false,
+  hideProjectTimeline = false,
+  hideBudgetStatus = false,
+  hideTags = false,
+  hideAdditionalCosts = false,
+  hideNotes = false,
+}: EstimateFormProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -126,7 +140,38 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
     try {
       let result
       if (estimate) {
-        result = await updateEstimate(estimate.id, values)
+        const filtered: any = { ...values }
+        if (hideClientInfo) {
+          delete filtered.clientName
+          delete filtered.clientContact
+          delete filtered.clientEmail
+          delete filtered.clientAddress
+        }
+        if (hideProjectTimeline) {
+          delete filtered.startDate
+          delete filtered.endDate
+          delete filtered.duration
+        }
+        if (hideBudgetStatus) {
+          delete filtered.estimatedBudget
+          delete filtered.actualCost
+          delete filtered.status
+          delete filtered.priority
+        }
+        if (hideTags) {
+          delete filtered.tags
+        }
+        if (hideAdditionalCosts) {
+          delete filtered.contingency
+          delete filtered.overhead
+          delete filtered.profitMargin
+          delete filtered.discount
+        }
+        if (hideNotes) {
+          delete filtered.notes
+        }
+
+        result = await updateEstimate(estimate.id, filtered)
       } else {
         result = await createEstimate(values)
       }
@@ -247,18 +292,48 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
             </div>
 
             {/* Client Information Section */}
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-foreground border-b pb-2">Client Information</h3>
-              
-              <div className="grid grid-cols-2 gap-4">
+            {!hideClientInfo && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-foreground border-b pb-2">Client Information</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="clientName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Client Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter client name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="clientContact"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Contact Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter contact number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
                 <FormField
                   control={form.control}
-                  name="clientName"
+                  name="clientEmail"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Client Name</FormLabel>
+                      <FormLabel>Email Address</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter client name" {...field} />
+                        <Input type="email" placeholder="Enter email address" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -267,222 +342,200 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
 
                 <FormField
                   control={form.control}
-                  name="clientContact"
+                  name="clientAddress"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contact Number</FormLabel>
+                      <FormLabel>Address</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter contact number" {...field} />
+                        <Textarea rows={2} placeholder="Enter client address" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-
-              <FormField
-                control={form.control}
-                name="clientEmail"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email Address</FormLabel>
-                    <FormControl>
-                      <Input type="email" placeholder="Enter email address" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="clientAddress"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Address</FormLabel>
-                    <FormControl>
-                      <Textarea rows={2} placeholder="Enter client address" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            )}
 
             {/* Project Timeline Section */}
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-foreground border-b pb-2">Project Timeline</h3>
-              
-              <div className="grid grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="startDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Start Date</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            {!hideProjectTimeline && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-foreground border-b pb-2">Project Timeline</h3>
+                
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="startDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Start Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="endDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>End Date</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="endDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>End Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="duration"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Duration (Days)</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="0" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="duration"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Duration (Days)</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="0" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Budget & Status Section */}
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-foreground border-b pb-2">Budget & Status</h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="estimatedBudget"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Estimated Budget (₹)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            {!hideBudgetStatus && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-foreground border-b pb-2">Budget & Status</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="estimatedBudget"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Estimated Budget (₹)</FormLabel>
+                        <FormControl>
+                          <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="actualCost"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Actual Cost (₹)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="actualCost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Actual Cost (₹)</FormLabel>
+                        <FormControl>
+                          <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <FormControl>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="draft">Draft</SelectItem>
+                              <SelectItem value="in-progress">In Progress</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="approved">Approved</SelectItem>
+                              <SelectItem value="rejected">Rejected</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="priority"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Priority</FormLabel>
+                        <FormControl>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select priority" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="low">Low</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="high">High</SelectItem>
+                              <SelectItem value="urgent">Urgent</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Status</FormLabel>
-                      <FormControl>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="draft">Draft</SelectItem>
-                            <SelectItem value="in-progress">In Progress</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                            <SelectItem value="approved">Approved</SelectItem>
-                            <SelectItem value="rejected">Rejected</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="priority"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Priority</FormLabel>
-                      <FormControl>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select priority" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="low">Low</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="high">High</SelectItem>
-                            <SelectItem value="urgent">Urgent</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
+            )}
 
             {/* Tags Section */}
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-foreground border-b pb-2">Tags</h3>
-              
-              <FormField
-                control={form.control}
-                name="tags"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Project Tags</FormLabel>
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Add a tag"
-                          value={newTag}
-                          onChange={(e) => setNewTag(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                        />
-                        <Button type="button" onClick={addTag} variant="outline">
-                          Add Tag
-                        </Button>
+            {!hideTags && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-foreground border-b pb-2">Tags</h3>
+                
+                <FormField
+                  control={form.control}
+                  name="tags"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Project Tags</FormLabel>
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Add a tag"
+                            value={newTag}
+                            onChange={(e) => setNewTag(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                          />
+                          <Button type="button" onClick={addTag} variant="outline">
+                            Add Tag
+                          </Button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {field.value.map((tag) => (
+                            <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+                              {tag}
+                              <X
+                                className="h-3 w-3 cursor-pointer"
+                                onClick={() => removeTag(tag)}
+                              />
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {field.value.map((tag) => (
-                          <Badge key={tag} variant="secondary" className="flex items-center gap-1">
-                            {tag}
-                            <X
-                              className="h-3 w-3 cursor-pointer"
-                              onClick={() => removeTag(tag)}
-                            />
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
 
             {/* Tax & Additional Charges Section */}
             <div className="space-y-4 p-6 bg-gradient-to-r from-muted/30 to-muted/50 rounded-xl border border-border/50">
@@ -529,79 +582,85 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
                     </FormItem>
                   )}
                 />
+                {!hideAdditionalCosts && (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="contingency"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contingency (₹)</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="overhead"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Overhead (₹)</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="profitMargin"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Profit Margin (%)</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="10.00" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="discount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Discount (₹)</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Notes Section */}
+            {!hideNotes && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-foreground border-b pb-2">Additional Notes</h3>
+                
                 <FormField
                   control={form.control}
-                  name="contingency"
+                  name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contingency (₹)</FormLabel>
+                      <FormLabel>Notes</FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="overhead"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Overhead (₹)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="profitMargin"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Profit Margin (%)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" placeholder="10.00" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="discount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Discount (₹)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                        <Textarea rows={4} placeholder="Enter any additional notes or comments" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-            </div>
-
-            {/* Notes Section */}
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-foreground border-b pb-2">Additional Notes</h3>
-              
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notes</FormLabel>
-                    <FormControl>
-                      <Textarea rows={4} placeholder="Enter any additional notes or comments" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            )}
 
             {/* Error Display */}
             {error && (

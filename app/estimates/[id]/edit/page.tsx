@@ -26,7 +26,15 @@ export default async function EditEstimatePage({ params }: { params: Promise<{ i
             </Button>
           </Link>
         </div>
-        <EstimateForm estimate={estimate} />
+        <EstimateForm 
+          estimate={estimate}
+          hideClientInfo
+          hideProjectTimeline
+          hideBudgetStatus
+          hideTags
+          hideAdditionalCosts
+          hideNotes
+        />
       </div>
     </div>
   )
