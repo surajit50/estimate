@@ -28,6 +28,7 @@ import {
 } from "lucide-react"
 import { createWorkItem, updateWorkItem, deleteWorkItem, createWorkItemsFromDatabase, createWorkItemsFromRateLibrary } from "@/lib/actions/work-items"
 import { freezeEstimate, unfreezeEstimate } from "@/lib/actions/estimates"
+import { EditWorkItemDialog } from "@/components/edit-work-item-dialog"
 import type { EstimateWithItems, UnitMasterType, RateLibraryType, WorkItemWithUnit } from "@/lib/types"
 
 interface WorkItemsPageClientProps {
@@ -875,6 +876,20 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Work Item Dialog */}
+      <EditWorkItemDialog
+        item={workItems.find(w => w.id === editingItem) ?? null}
+        onOpenChange={(open) => {
+          if (!open) setEditingItem(null)
+        }}
+        onEdit={(updated) => {
+          setWorkItems(workItems.map(w => (w.id === updated.id ? updated : w)))
+          setEditingItem(null)
+        }}
+        units={units}
+        rates={rates}
+      />
     </div>
   )
 }
