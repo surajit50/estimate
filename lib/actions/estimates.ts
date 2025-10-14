@@ -65,13 +65,87 @@ export async function createEstimate(data: {
   description?: string
   location?: string
   activityCode?: string
+
+  // Client Information
+  clientName?: string
+  clientContact?: string
+  clientEmail?: string
+  clientAddress?: string
+
+  // Project Timeline (dates as yyyy-mm-dd strings)
+  startDate?: string
+  endDate?: string
+  duration?: number
+
+  // Budget Tracking
+  estimatedBudget?: number
+  actualCost?: number
+
+  // Status and Priority
+  status?: string
+  priority?: string
+
+  // Tags
+  tags?: string[]
+
+  // Tax Configuration
   cgstPercent?: number
   sgstPercent?: number
   cessPercent?: number
+
+  // Additional Costs
   contingency?: number
+  overhead?: number
+  profitMargin?: number
+  discount?: number
+
+  // Notes
+  notes?: string
 }) {
   try {
-    const { title, category, description, location, activityCode, cgstPercent, sgstPercent, cessPercent, contingency } = data
+    const {
+      title,
+      category,
+      description,
+      location,
+      activityCode,
+
+      // Client
+      clientName,
+      clientContact,
+      clientEmail,
+      clientAddress,
+
+      // Timeline
+      startDate,
+      endDate,
+      duration,
+
+      // Budget
+      estimatedBudget,
+      actualCost,
+
+      // Status
+      status,
+      priority,
+
+      // Tags
+      tags,
+
+      // Taxes
+      cgstPercent,
+      sgstPercent,
+      cessPercent,
+
+      // Additional
+      contingency,
+      overhead,
+      profitMargin,
+      discount,
+
+      // Notes
+      notes,
+    } = data
 
     // Validation
     if (!title || !category) {
@@ -82,17 +156,56 @@ export async function createEstimate(data: {
       return { success: false, error: "Title must be less than 255 characters" }
     }
 
+    const toNullableString = (v?: string | null) => (v && v.trim().length > 0 ? v.trim() : null)
+    const toNumber = (v: unknown, fallback = 0) => {
+      const n = typeof v === "number" ? v : parseFloat(String(v ?? NaN))
+      return Number.isFinite(n) ? n : fallback
+    }
+
     const estimate = await prisma.estimate.create({
       data: {
+        // Basic
         title: title.trim(),
         category: category.trim(),
-        description: description?.trim() || null,
-        location: location?.trim() || null,
-        activityCode: activityCode?.trim() || null,
-        cgstPercent: cgstPercent ? parseFloat(cgstPercent.toString()) : 9,
-        sgstPercent: sgstPercent ? parseFloat(sgstPercent.toString()) : 9,
-        cessPercent: cessPercent ? parseFloat(cessPercent.toString()) : 1,
-        contingency: contingency ? parseFloat(contingency.toString()) : 0,
+        description: toNullableString(description ?? null),
+        location: toNullableString(location ?? null),
+        activityCode: toNullableString(activityCode ?? null),
+
+        // Client
+        clientName: toNullableString(clientName ?? null),
+        clientContact: toNullableString(clientContact ?? null),
+        clientEmail: toNullableString(clientEmail ?? null),
+        clientAddress: toNullableString(clientAddress ?? null),
+
+        // Timeline
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
+        duration: typeof duration === "number" ? duration : null,
+
+        // Budget
+        estimatedBudget: toNumber(estimatedBudget, 0),
+        actualCost: toNumber(actualCost, 0),
+
+        // Status & priority
+        status: toNullableString(status ?? "draft") ?? "draft",
+        priority: toNullableString(priority ?? "medium") ?? "medium",
+
+        // Tags
+        tags: Array.isArray(tags) ? tags : [],
+
+        // Taxes
+        cgstPercent: toNumber(cgstPercent, 9),
+        sgstPercent: toNumber(sgstPercent, 9),
+        cessPercent: toNumber(cessPercent, 1),
+
+        // Additional costs
+        contingency: toNumber(contingency, 0),
+        overhead: toNumber(overhead, 0),
+        profitMargin: toNumber(profitMargin, 10),
+        discount: toNumber(discount, 0),
+
+        // Notes
+        notes: toNullableString(notes ?? null),
       },
     })
 
@@ -115,19 +228,96 @@ export async function updateEstimate(id: string, data: {
   description?: string
   location?: string
   activityCode?: string
+
+  // Client Information
+  clientName?: string
+  clientContact?: string
+  clientEmail?: string
+  clientAddress?: string
+
+  // Project Timeline (dates as yyyy-mm-dd strings)
+  startDate?: string
+  endDate?: string
+  duration?: number
+
+  // Budget Tracking
+  estimatedBudget?: number
+  actualCost?: number
+
+  // Status and Priority
+  status?: string
+  priority?: string
+
+  // Tags
+  tags?: string[]
+
+  // Tax Configuration
   cgstPercent?: number
   sgstPercent?: number
   cessPercent?: number
+
+  // Additional Costs
   contingency?: number
+  overhead?: number
+  profitMargin?: number
+  discount?: number
+
+  // Notes
+  notes?: string
 }) {
   try {
+    const toNullableString = (v?: string | null) => (v && v.trim().length > 0 ? v.trim() : null)
+    const toNumber = (v: unknown, fallback = undefined as number | undefined) => {
+      if (v === undefined) return undefined
+      const n = typeof v === "number" ? v : parseFloat(String(v ?? NaN))
+      return Number.isFinite(n) ? n : fallback
+    }
+
     const estimate = await prisma.estimate.update({
       where: { id },
       data: {
-        ...data,
-        description: data.description || null,
-        location: data.location || null,
-        activityCode: data.activityCode || null,
+        // Basic
+        title: data.title?.trim(),
+        category: data.category?.trim(),
+        description: data.description !== undefined ? toNullableString(data.description) : undefined,
+        location: data.location !== undefined ? toNullableString(data.location) : undefined,
+        activityCode: data.activityCode !== undefined ? toNullableString(data.activityCode) : undefined,
+
+        // Client
+        clientName: data.clientName !== undefined ? toNullableString(data.clientName) : undefined,
+        clientContact: data.clientContact !== undefined ? toNullableString(data.clientContact) : undefined,
+        clientEmail: data.clientEmail !== undefined ? toNullableString(data.clientEmail) : undefined,
+        clientAddress: data.clientAddress !== undefined ? toNullableString(data.clientAddress) : undefined,
+
+        // Timeline
+        startDate: data.startDate !== undefined ? (data.startDate ? new Date(data.startDate) : null) : undefined,
+        endDate: data.endDate !== undefined ? (data.endDate ? new Date(data.endDate) : null) : undefined,
+        duration: data.duration !== undefined ? data.duration : undefined,
+
+        // Budget
+        estimatedBudget: toNumber(data.estimatedBudget),
+        actualCost: toNumber(data.actualCost),
+
+        // Status & priority
+        status: data.status !== undefined ? (toNullableString(data.status) ?? "draft") : undefined,
+        priority: data.priority !== undefined ? (toNullableString(data.priority) ?? "medium") : undefined,
+
+        // Tags
+        tags: data.tags !== undefined ? (Array.isArray(data.tags) ? data.tags : []) : undefined,
+
+        // Taxes
+        cgstPercent: toNumber(data.cgstPercent),
+        sgstPercent: toNumber(data.sgstPercent),
+        cessPercent: toNumber(data.cessPercent),
+
+        // Additional costs
+        contingency: toNumber(data.contingency),
+        overhead: toNumber(data.overhead),
+        profitMargin: toNumber(data.profitMargin),
+        discount: toNumber(data.discount),
+
+        // Notes
+        notes: data.notes !== undefined ? toNullableString(data.notes) : undefined,
       },
     })
 
