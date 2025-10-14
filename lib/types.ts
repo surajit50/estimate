@@ -55,7 +55,6 @@ export interface EstimateWithItems {
   discount?: number
   
   // Notes and Attachments
-  notes?: string | null
   attachments?: string[]
   
   createdAt: Date

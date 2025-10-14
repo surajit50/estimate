@@ -54,7 +54,6 @@ model Estimate {
   discount        Float            @default(0.0)
   
   // Notes and Attachments
-  notes           String?
   attachments     String[]         @default([])
   
   createdAt       DateTime         @default(now())

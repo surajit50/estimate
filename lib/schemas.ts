@@ -45,8 +45,7 @@ export const estimateSchema = z.object({
   profitMargin: z.coerce.number().min(0, "Must be ≥ 0").max(100, "Must be ≤ 100").default(10),
   discount: z.coerce.number().min(0, "Must be ≥ 0").default(0),
   
-  // Notes
-  notes: z.string().optional().default(""),
+  
 })
 
 export type EstimateFormValues = z.infer<typeof estimateSchema>

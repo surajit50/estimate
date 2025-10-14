@@ -49,7 +49,7 @@ interface EstimateFormProps {
     overhead?: number
     profitMargin?: number
     discount?: number
-    notes?: string | null
+    
   }
 }
 
@@ -114,8 +114,7 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
       profitMargin: estimate?.profitMargin ?? 10,
       discount: estimate?.discount ?? 0,
       
-      // Notes
-      notes: estimate?.notes || "",
+      
     },
   })
 
@@ -584,24 +583,7 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
               </div>
             </div>
 
-            {/* Notes Section */}
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-foreground border-b pb-2">Additional Notes</h3>
-              
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notes</FormLabel>
-                    <FormControl>
-                      <Textarea rows={4} placeholder="Enter any additional notes or comments" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            
 
             {/* Error Display */}
             {error && (

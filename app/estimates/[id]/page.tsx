@@ -273,17 +273,7 @@ export default async function ViewEstimatePage({ params }: { params: Promise<{ i
             </CardContent>
           </Card>
 
-          {/* Notes */}
-          {estimate.notes && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Notes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm whitespace-pre-wrap">{estimate.notes}</p>
-              </CardContent>
-            </Card>
-          )}
+          
 
           {/* Work Items Summary */}
           <Card>
