@@ -21,7 +21,9 @@ import { Textarea } from "@/components/ui/textarea"
 
 import type { WorkItemWithUnit, UnitMasterType, RateLibraryType } from "@/lib/types"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { workItemSchema, type WorkItemFormValues } from "@/lib/schemas"
+import { nonEmptyString } from "@/lib/schemas"
+import { z } from "zod"
+import { updateWorkItem } from "@/lib/actions/work-items"
 
 type EditableSubItem = {
   id?: string
@@ -45,15 +47,44 @@ interface EditWorkItemDialogProps {
   rates: Rate[]
 }
 
+const workItemEditSchema = z.object({
+  pageRef: z.string().optional().default(""),
+  description: nonEmptyString,
+  unitId: nonEmptyString,
+  rate: z.coerce.number().positive("Must be > 0"),
+  subItems: z.array(z.object({
+    id: z.string().optional(),
+    description: z.string().optional().default(""),
+    nos: z.coerce.number().positive("Must be > 0"),
+    length: z.coerce.number().positive("Must be > 0"),
+    breadth: z.coerce.number().positive("Must be > 0"),
+    depth: z.coerce.number().positive("Must be > 0"),
+  })).optional().default([]),
+  subCategories: z.array(z.object({
+    id: z.string().optional(),
+    categoryName: z.string().optional().default(""),
+    description: z.string().optional().default(""),
+    subItems: z.array(z.object({
+      id: z.string().optional(),
+      description: z.string().optional().default(""),
+      nos: z.coerce.number().positive("Must be > 0"),
+      length: z.coerce.number().positive("Must be > 0"),
+      breadth: z.coerce.number().positive("Must be > 0"),
+      depth: z.coerce.number().positive("Must be > 0"),
+    })).optional().default([]),
+  })).optional().default([]),
+})
+
+type WorkItemEditFormValues = z.infer<typeof workItemEditSchema>
+
 export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }: EditWorkItemDialogProps) {
-  const form = useForm<WorkItemFormValues>({
-    resolver: zodResolver(workItemSchema),
+  const form = useForm<WorkItemEditFormValues>({
+    resolver: zodResolver(workItemEditSchema),
     defaultValues: {
       pageRef: "",
       description: "",
       unitId: "",
       rate: 0,
-      quantity: 0,
       subItems: [],
       subCategories: [],
     },
@@ -199,7 +230,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
     return calculatedQuantity * r
   }, [watchedRate, calculatedQuantity])
 
-  const onSubmit = async (values: WorkItemFormValues) => {
+  const onSubmit = async (values: WorkItemEditFormValues) => {
     if (!item) return
     try {
       const selectedUnit = units.find((u) => u.id === values.unitId)
@@ -207,19 +238,27 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
       const pageRef = pageItemParts[0] || null
       const itemRef = pageItemParts[1] || null
 
-      const response = await fetch(`/api/work-items/${item.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pageRef,
-          itemRef,
-          description: values.description,
-          unitId: values.unitId,
-          rate: values.rate,
-          quantity: calculatedQuantity,
-          amount: calculatedAmount,
-          subItems: (values.subItems || []).map((s) => ({
-            id: (s as any).id,
+      const result = await updateWorkItem(item.id, {
+        pageRef,
+        itemRef: itemRef || undefined,
+        description: values.description,
+        unitId: values.unitId,
+        rate: values.rate,
+        quantity: calculatedQuantity,
+        amount: calculatedAmount,
+        subItems: (values.subItems || []).map((s) => ({
+          description: s.description,
+          nos: s.nos,
+          length: s.length,
+          breadth: s.breadth,
+          depth: s.depth,
+          quantity: calculateSubItemQuantity(s, selectedUnit?.unitSymbol || ""),
+          unitSymbol: selectedUnit?.unitSymbol || "",
+        })),
+        subCategories: (values.subCategories || []).map((category) => ({
+          categoryName: category.categoryName || "",
+          description: category.description || "",
+          subItems: (category.subItems || []).map((s) => ({
             description: s.description,
             nos: s.nos,
             length: s.length,
@@ -228,27 +267,11 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
             quantity: calculateSubItemQuantity(s, selectedUnit?.unitSymbol || ""),
             unitSymbol: selectedUnit?.unitSymbol || "",
           })),
-          subCategories: (values.subCategories || []).map((category) => ({
-            id: (category as any).id,
-            categoryName: category.categoryName,
-            description: category.description,
-            subItems: (category.subItems || []).map((s) => ({
-              id: (s as any).id,
-              description: s.description,
-              nos: s.nos,
-              length: s.length,
-              breadth: s.breadth,
-              depth: s.depth,
-              quantity: calculateSubItemQuantity(s, selectedUnit?.unitSymbol || ""),
-              unitSymbol: selectedUnit?.unitSymbol || "",
-            })),
-          })),
-        }),
+        })),
       })
 
-      if (response.ok) {
-        const updatedItem = await response.json()
-        onEdit(updatedItem)
+      if (result.success && result.data) {
+        onEdit(result.data as unknown as WorkItemWithUnit)
         onOpenChange(false)
       }
     } catch (error) {
