@@ -13,10 +13,11 @@ import {
 import { BreadcrumbNav } from "@/components/breadcrumb-nav"
 import { notFound } from "next/navigation"
 import { WorkItemsPageClient } from "@/components/work-items-page-client"
+import { getRates } from "@/lib/actions/rates"
 
 export default async function WorkItemsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const [estimate, units, rates, allWorkItems] = await Promise.all([
+  const [estimate, units, ratesResult, allWorkItems] = await Promise.all([
     prisma.estimate.findUnique({
       where: { id },
       include: {
@@ -31,12 +32,7 @@ export default async function WorkItemsPage({ params }: { params: Promise<{ id: 
     prisma.unitMaster.findMany({
       orderBy: { unitName: "asc" },
     }),
-    prisma.rateLibrary.findMany({
-      include: {
-        unit: true,
-      },
-      orderBy: { description: "asc" },
-    }),
+    getRates(),
     prisma.workItem.findMany({
       include: {
         unit: true,
@@ -51,6 +47,8 @@ export default async function WorkItemsPage({ params }: { params: Promise<{ id: 
       orderBy: { description: "asc" },
     }),
   ])
+
+  const rates = ratesResult.success ? ratesResult.data : []
 
   if (!estimate) {
     notFound()

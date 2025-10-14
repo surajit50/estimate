@@ -11,6 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { 
   Plus, 
   Save, 
@@ -24,7 +26,10 @@ import {
   Users,
   Wrench,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  Search,
+  CheckIcon,
+  ChevronsUpDown
 } from "lucide-react"
 import { createWorkItem, updateWorkItem, deleteWorkItem, createWorkItemsFromDatabase } from "@/lib/actions/work-items"
 import type { EstimateWithItems, UnitMasterType, RateLibraryType, WorkItemWithUnit } from "@/lib/types"
@@ -52,6 +57,7 @@ interface NewWorkItemForm {
   profitMargin: number
   notes: string
   pageRef: string
+  selectedRateId: string
 }
 
 export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: WorkItemsPageClientProps) {
@@ -63,6 +69,8 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [showDatabaseSelection, setShowDatabaseSelection] = useState(false)
   const [selectedDatabaseItems, setSelectedDatabaseItems] = useState<string[]>([])
+  const [isRateSelectorOpen, setIsRateSelectorOpen] = useState(false)
+  const [rateSearchValue, setRateSearchValue] = useState("")
   
   const [newItem, setNewItem] = useState<NewWorkItemForm>({
     description: "",
@@ -79,7 +87,8 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
     discount: 0,
     profitMargin: 10,
     notes: "",
-    pageRef: ""
+    pageRef: "",
+    selectedRateId: ""
   })
 
   const formRef = useRef<HTMLFormElement>(null)
@@ -92,6 +101,55 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
   const totalOverheadCost = workItems.reduce((sum, item) => sum + (item.overheadCost || 0), 0)
 
   const nextItemNo = workItems.length > 0 ? Math.max(...workItems.map(item => item.itemNo)) + 1 : 1
+
+  // Filter rates based on search
+  const filteredRates = rates.filter(rate => 
+    rate.description.toLowerCase().includes(rateSearchValue.toLowerCase()) ||
+    rate.unit.unitSymbol.toLowerCase().includes(rateSearchValue.toLowerCase())
+  )
+
+  // Get selected rate details
+  const selectedRate = rates.find(rate => rate.id === newItem.selectedRateId)
+
+  // Handle rate selection
+  const handleRateSelect = (rateId: string) => {
+    const rate = rates.find(r => r.id === rateId)
+    if (rate) {
+      setNewItem({
+        ...newItem,
+        selectedRateId: rateId,
+        description: rate.description,
+        unitId: rate.unitId,
+        rate: rate.standardRate
+      })
+      setIsRateSelectorOpen(false)
+      setRateSearchValue("")
+    }
+  }
+
+  // Reset form
+  const resetForm = () => {
+    setNewItem({
+      description: "",
+      unitId: "",
+      rate: 0,
+      quantity: 0,
+      length: 0,
+      width: 0,
+      height: 0,
+      materialCost: 0,
+      laborCost: 0,
+      equipmentCost: 0,
+      overheadCost: 0,
+      discount: 0,
+      profitMargin: 10,
+      notes: "",
+      pageRef: "",
+      selectedRateId: ""
+    })
+    setRateSearchValue("")
+    setIsRateSelectorOpen(false)
+  }
 
   const calculateAmount = (item: NewWorkItemForm) => {
     const unit = units.find(u => u.id === item.unitId)
@@ -145,23 +203,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
 
       if (result.success && result.data) {
         setWorkItems([...workItems, result.data])
-        setNewItem({
-          description: "",
-          unitId: "",
-          rate: 0,
-          quantity: 0,
-          length: 0,
-          width: 0,
-          height: 0,
-          materialCost: 0,
-          laborCost: 0,
-          equipmentCost: 0,
-          overheadCost: 0,
-          discount: 0,
-          profitMargin: 10,
-          notes: "",
-          pageRef: ""
-        })
+        resetForm()
         setIsAddingItem(false)
         formRef.current?.reset()
       }
@@ -463,7 +505,108 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
         {isAddingItem && (
           <CardContent>
             <form ref={formRef} className="space-y-6">
-              {/* Basic Information */}
+              {/* Rate Selection */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Select from Rate Library *</Label>
+                  <Popover open={isRateSelectorOpen} onOpenChange={setIsRateSelectorOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={isRateSelectorOpen}
+                        className="w-full justify-between"
+                      >
+                        {selectedRate ? (
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">{selectedRate.description}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {selectedRate.unit.unitSymbol} - ₹{selectedRate.standardRate.toFixed(2)}
+                            </span>
+                          </div>
+                        ) : (
+                          "Search and select from rate library..."
+                        )}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="start">
+                      <Command>
+                        <CommandInput
+                          placeholder="Search rates..."
+                          value={rateSearchValue}
+                          onValueChange={setRateSearchValue}
+                        />
+                        <CommandList>
+                          <CommandEmpty>No rates found.</CommandEmpty>
+                          <CommandGroup>
+                            {filteredRates.map((rate) => (
+                              <CommandItem
+                                key={rate.id}
+                                value={`${rate.description} ${rate.unit.unitSymbol}`}
+                                onSelect={() => handleRateSelect(rate.id)}
+                              >
+                                <div className="flex flex-col w-full">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-medium">{rate.description}</span>
+                                    <span className="text-sm text-muted-foreground">
+                                      ₹{rate.standardRate.toFixed(2)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                                    <span>Unit: {rate.unit.unitSymbol}</span>
+                                    <span>Year: {rate.year || 'N/A'}</span>
+                                  </div>
+                                </div>
+                                <CheckIcon
+                                  className={`ml-auto h-4 w-4 ${
+                                    newItem.selectedRateId === rate.id ? "opacity-100" : "opacity-0"
+                                  }`}
+                                />
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Manual Entry Option */}
+                <div className="flex items-center space-x-2">
+                  <Separator className="flex-1" />
+                  <span className="text-sm text-muted-foreground">OR</span>
+                  <Separator className="flex-1" />
+                </div>
+
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setNewItem({ ...newItem, selectedRateId: "" })
+                      setIsRateSelectorOpen(false)
+                    }}
+                    className="h-auto p-0 text-blue-600 hover:text-blue-800"
+                  >
+                    Enter manually instead
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    asChild
+                    className="h-auto p-0 text-green-600 hover:text-green-800"
+                  >
+                    <a href="/admin/rates" target="_blank" rel="noopener noreferrer">
+                      Add new rate to library
+                    </a>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Manual Entry Fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="description">Description *</Label>
@@ -473,6 +616,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                     value={newItem.description}
                     onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
                     rows={3}
+                    disabled={!!newItem.selectedRateId}
                   />
                 </div>
                 
@@ -491,7 +635,11 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="unit">Unit *</Label>
-                  <Select value={newItem.unitId} onValueChange={(value) => setNewItem({ ...newItem, unitId: value })}>
+                  <Select 
+                    value={newItem.unitId} 
+                    onValueChange={(value) => setNewItem({ ...newItem, unitId: value })}
+                    disabled={!!newItem.selectedRateId}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select unit" />
                     </SelectTrigger>
@@ -514,6 +662,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                     placeholder="0.00"
                     value={newItem.rate || ""}
                     onChange={(e) => setNewItem({ ...newItem, rate: parseFloat(e.target.value) || 0 })}
+                    disabled={!!newItem.selectedRateId}
                   />
                 </div>
                 
@@ -682,23 +831,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                   variant="outline"
                   onClick={() => {
                     setIsAddingItem(false)
-                    setNewItem({
-                      description: "",
-                      unitId: "",
-                      rate: 0,
-                      quantity: 0,
-                      length: 0,
-                      width: 0,
-                      height: 0,
-                      materialCost: 0,
-                      laborCost: 0,
-                      equipmentCost: 0,
-                      overheadCost: 0,
-                      discount: 0,
-                      profitMargin: 10,
-                      notes: "",
-                      pageRef: ""
-                    })
+                    resetForm()
                     formRef.current?.reset()
                   }}
                 >
