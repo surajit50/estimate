@@ -411,6 +411,86 @@ export async function createWorkItemsFromDatabase(data: {
   }
 }
 
+export async function createWorkItemsFromRateLibrary(data: {
+  estimateId: string
+  rateIds: string[]
+}) {
+  try {
+    const { estimateId, rateIds } = data
+
+    if (!estimateId || rateIds.length === 0) {
+      return { success: false, error: "Missing required fields" }
+    }
+
+    // Block when estimate is frozen
+    const est = await prisma.estimate.findUnique({ where: { id: estimateId }, select: { isFrozen: true } })
+    if (est?.isFrozen) {
+      return { success: false, error: "Estimate is finalized and cannot be modified" }
+    }
+
+    // Get selected rate library entries
+    const rateEntries = await prisma.rateLibrary.findMany({
+      where: { id: { in: rateIds } },
+      include: { unit: true },
+    })
+
+    if (rateEntries.length === 0) {
+      return { success: false, error: "No rate entries found" }
+    }
+
+    // Determine next item number
+    const existingItems = await prisma.workItem.findMany({
+      where: { estimateId },
+      select: { itemNo: true },
+      orderBy: { itemNo: "desc" },
+    })
+    const baseItemNo = existingItems.length > 0 ? existingItems[0].itemNo + 1 : 1
+
+    // Create items from rates
+    const newItems = await Promise.all(
+      rateEntries.map((rate, index) =>
+        prisma.workItem.create({
+          data: {
+            estimateId,
+            itemNo: baseItemNo + index,
+            pageRef: null,
+            description: rate.description,
+            unitId: rate.unitId,
+            rate: rate.standardRate,
+            quantity: 0,
+            length: 0,
+            width: 0,
+            height: 0,
+            amount: 0,
+            materialCost: 0,
+            laborCost: 0,
+            equipmentCost: 0,
+            overheadCost: 0,
+            discount: 0,
+            profitMargin: 10,
+            status: "active",
+            priority: "medium",
+          },
+          include: {
+            unit: true,
+            subItems: true,
+            subCategories: {
+              include: { subItems: true },
+            },
+          },
+        })
+      )
+    )
+
+    revalidatePath(`/estimates/${estimateId}`)
+    revalidatePath(`/estimates/${estimateId}/work-items`)
+    return { success: true, data: newItems }
+  } catch (error) {
+    console.error("Error creating work items from rate library:", error)
+    return { success: false, error: "Failed to create items from rate library" }
+  }
+}
+
 export async function deleteWorkItem(id: string) {
   try {
     const workItem = await prisma.workItem.findUnique({

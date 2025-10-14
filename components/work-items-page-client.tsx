@@ -26,7 +26,7 @@ import {
   TrendingUp,
   AlertCircle
 } from "lucide-react"
-import { createWorkItem, updateWorkItem, deleteWorkItem, createWorkItemsFromDatabase } from "@/lib/actions/work-items"
+import { createWorkItem, updateWorkItem, deleteWorkItem, createWorkItemsFromDatabase, createWorkItemsFromRateLibrary } from "@/lib/actions/work-items"
 import { freezeEstimate, unfreezeEstimate } from "@/lib/actions/estimates"
 import type { EstimateWithItems, UnitMasterType, RateLibraryType, WorkItemWithUnit } from "@/lib/types"
 
@@ -62,8 +62,8 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
   const [editingItem, setEditingItem] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
-  const [showDatabaseSelection, setShowDatabaseSelection] = useState(false)
-  const [selectedDatabaseItems, setSelectedDatabaseItems] = useState<string[]>([])
+  const [showRateSelection, setShowRateSelection] = useState(false)
+  const [selectedRateIds, setSelectedRateIds] = useState<string[]>([])
   const [isFrozen, setIsFrozen] = useState<boolean>(!!(estimate as any).isFrozen)
   
   const [newItem, setNewItem] = useState<NewWorkItemForm>({
@@ -246,22 +246,18 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
     }
   }, [newItem.unitId, newItem.length, newItem.width, newItem.height])
 
-  const handleAddFromDatabase = async () => {
+  const handleAddFromRates = async () => {
     if (isFrozen) return
-    if (selectedDatabaseItems.length === 0) return
+    if (selectedRateIds.length === 0) return
 
     setIsSaving(true)
     try {
-      console.log("Adding items from database:", selectedDatabaseItems)
-      console.log("Available work items:", allWorkItems.length)
-      
-      const result = await createWorkItemsFromDatabase({
+      const result = await createWorkItemsFromRateLibrary({
         estimateId: estimate.id,
-        sourceItemIds: selectedDatabaseItems
+        rateIds: selectedRateIds,
       })
 
       if (result.success && result.data) {
-        console.log("Successfully added items:", result.data.length)
         // Refresh the page to show updated data
         window.location.reload()
       } else {
@@ -269,11 +265,11 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
         alert(`Failed to add items: ${result.error}`)
       }
 
-      setSelectedDatabaseItems([])
-      setShowDatabaseSelection(false)
+      setSelectedRateIds([])
+      setShowRateSelection(false)
     } catch (error) {
-      console.error("Error adding items from database:", error)
-      alert("Error adding items from database")
+      console.error("Error adding items from rate library:", error)
+      alert("Error adding items from rate library")
     } finally {
       setIsSaving(false)
     }
@@ -370,38 +366,31 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
         </Card>
       </div>
 
-      {/* Database Selection */}
+      {/* Rate Library Selection */}
       <Card className="border-2 border-dashed border-blue-200">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5 text-blue-500" />
-              Select from Database
+              Select from Rate Library
             </CardTitle>
             <Button
               variant="outline"
-              onClick={() => setShowDatabaseSelection(!showDatabaseSelection)}
+              onClick={() => setShowRateSelection(!showRateSelection)}
               disabled={isFrozen}
             >
-              {showDatabaseSelection ? <X className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-              {showDatabaseSelection ? "Cancel" : "Browse Items"}
+              {showRateSelection ? <X className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+              {showRateSelection ? "Cancel" : "Browse Rates"}
             </Button>
           </div>
         </CardHeader>
         
-        {showDatabaseSelection && (
+        {showRateSelection && (
           <CardContent>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Select work items from existing estimates to add to this project.
+                Select standard items from the rate library to add to this estimate.
               </p>
-              
-              {/* Debug Info */}
-              <div className="text-xs text-muted-foreground bg-gray-50 p-2 rounded">
-                <p>Total work items in database: {allWorkItems.length}</p>
-                <p>Items from other estimates: {allWorkItems.filter(item => item.estimate.id !== estimate.id).length}</p>
-                <p>Current estimate ID: {estimate.id}</p>
-              </div>
               
               <div className="max-h-96 overflow-y-auto border rounded-lg">
                 <Table>
@@ -409,77 +398,64 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                     <TableRow>
                       <TableHead className="w-12">Select</TableHead>
                       <TableHead>Description</TableHead>
-                      <TableHead>From Estimate</TableHead>
                       <TableHead>Unit</TableHead>
-                      <TableHead className="text-right">Rate (₹)</TableHead>
+                      <TableHead className="text-right">Standard Rate (₹)</TableHead>
+                      <TableHead className="text-right">Year</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {allWorkItems
-                      .filter(item => item.estimate.id !== estimate.id) // Exclude current estimate
-                      .length > 0 ? (
-                        allWorkItems
-                          .filter(item => item.estimate.id !== estimate.id)
-                          .map((item) => (
-                            <TableRow key={item.id}>
-                              <TableCell>
-                                <Checkbox
-                                  checked={selectedDatabaseItems.includes(item.id)}
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      setSelectedDatabaseItems([...selectedDatabaseItems, item.id])
-                                    } else {
-                                      setSelectedDatabaseItems(selectedDatabaseItems.filter(id => id !== item.id))
-                                    }
-                                  }}
-                                />
-                              </TableCell>
-                              <TableCell className="max-w-[300px]">
-                                <div className="font-medium">{item.description}</div>
-                                {item.pageRef && (
-                                  <div className="text-xs text-muted-foreground mt-1">Ref: {item.pageRef}</div>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <div>
-                                  <div className="font-medium">{item.estimate.title}</div>
-                                  <div className="text-xs text-muted-foreground">{item.estimate.category}</div>
-                                </div>
-                              </TableCell>
-                              <TableCell>{item.unit.unitSymbol}</TableCell>
-                              <TableCell className="text-right">{item.rate.toFixed(2)}</TableCell>
-                            </TableRow>
-                          ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                            <div className="flex flex-col items-center gap-2">
-                              <Package className="h-8 w-8 text-muted-foreground/50" />
-                              <p>No work items found in other estimates</p>
-                              <p className="text-xs">Create some work items in other estimates first</p>
-                            </div>
+                    {rates.length > 0 ? (
+                      rates.map((rate) => (
+                        <TableRow key={rate.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedRateIds.includes(rate.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedRateIds([...selectedRateIds, rate.id])
+                                } else {
+                                  setSelectedRateIds(selectedRateIds.filter(id => id !== rate.id))
+                                }
+                              }}
+                            />
                           </TableCell>
+                          <TableCell className="max-w-[300px]">
+                            <div className="font-medium">{rate.description}</div>
+                          </TableCell>
+                          <TableCell>{rate.unit.unitSymbol}</TableCell>
+                          <TableCell className="text-right">{rate.standardRate.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">{rate.year || "-"}</TableCell>
                         </TableRow>
-                      )}
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                          <div className="flex flex-col items-center gap-2">
+                            <Package className="h-8 w-8 text-muted-foreground/50" />
+                            <p>No rates found in library</p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </div>
 
-              {selectedDatabaseItems.length > 0 && (
+              {selectedRateIds.length > 0 && (
                 <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
                   <span className="text-sm font-medium">
-                    {selectedDatabaseItems.length} item(s) selected
+                    {selectedRateIds.length} item(s) selected
                   </span>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      onClick={() => setSelectedDatabaseItems([])}
+                      onClick={() => setSelectedRateIds([])}
                       disabled={isFrozen}
                     >
                       Clear Selection
                     </Button>
                     <Button
-                      onClick={handleAddFromDatabase}
+                      onClick={handleAddFromRates}
                       disabled={isSaving || isFrozen}
                     >
                       {isSaving ? (
@@ -487,7 +463,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                       ) : (
                         <Plus className="h-4 w-4 mr-2" />
                       )}
-                      {isSaving ? "Adding..." : `Add ${selectedDatabaseItems.length} Item(s)`}
+                      {isSaving ? "Adding..." : `Add ${selectedRateIds.length} Item(s)`}
                     </Button>
                   </div>
                 </div>
