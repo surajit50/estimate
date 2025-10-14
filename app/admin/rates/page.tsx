@@ -3,7 +3,7 @@ import { DashboardHeader } from "@/components/dashboard-header"
 import { RatesTable } from "@/components/rates-table"
 
 export default async function AdminRatesPage() {
-  const [rates, units] = await Promise.all([
+  const [rates, units, estimates] = await Promise.all([
     prisma.rateLibrary.findMany({
       include: {
         unit: true,
@@ -11,6 +11,10 @@ export default async function AdminRatesPage() {
       orderBy: { createdAt: "desc" },
     }),
     prisma.unitMaster.findMany({
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.estimate.findMany({
+      select: { id: true, title: true, category: true },
       orderBy: { createdAt: "desc" },
     }),
   ])
@@ -27,7 +31,7 @@ export default async function AdminRatesPage() {
             </p>
           </div>
           <div className="animate-fade-in">
-            <RatesTable rates={rates} units={units} />
+            <RatesTable rates={rates} units={units} estimates={estimates} />
           </div>
         </div>
       </main>

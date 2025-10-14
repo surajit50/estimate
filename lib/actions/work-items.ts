@@ -390,6 +390,87 @@ export async function createWorkItemsFromDatabase(data: {
   }
 }
 
+export async function createWorkItemsFromRates(data: {
+  estimateId: string
+  rateIds: string[]
+  quantity?: number
+}) {
+  try {
+    const { estimateId, rateIds, quantity } = data
+
+    if (!estimateId || !rateIds || rateIds.length === 0) {
+      return { success: false, error: "Missing required fields" }
+    }
+
+    const defaultQuantity = typeof quantity === "number" && quantity > 0 ? quantity : 1
+
+    // Fetch selected rates
+    const rates = await prisma.rateLibrary.findMany({
+      where: { id: { in: rateIds } },
+      include: { unit: true },
+      orderBy: { description: "asc" },
+    })
+
+    if (rates.length === 0) {
+      return { success: false, error: "No rates found for the given IDs" }
+    }
+
+    // Determine next item number for target estimate
+    const existingItems = await prisma.workItem.findMany({
+      where: { estimateId },
+      select: { itemNo: true },
+      orderBy: { itemNo: "desc" },
+    })
+    let nextItemNo = existingItems.length > 0 ? existingItems[0].itemNo + 1 : 1
+
+    // Create items for each selected rate
+    const createdItems = await Promise.all(
+      rates.map(async (rate) => {
+        const amount = Number(rate.standardRate) * defaultQuantity
+        const created = await prisma.workItem.create({
+          data: {
+            estimateId,
+            itemNo: nextItemNo++,
+            pageRef: null,
+            description: rate.description.trim(),
+            unitId: rate.unitId,
+            rate: Number(rate.standardRate),
+            quantity: defaultQuantity,
+            length: 0,
+            width: 0,
+            height: 0,
+            amount: amount,
+            materialCost: 0,
+            laborCost: 0,
+            equipmentCost: 0,
+            overheadCost: 0,
+            discount: 0,
+            profitMargin: 10,
+            notes: null,
+            status: "active",
+            priority: "medium",
+          },
+          include: {
+            unit: true,
+            subItems: true,
+            subCategories: {
+              include: { subItems: true },
+            },
+          },
+        })
+        return created
+      })
+    )
+
+    revalidatePath(`/estimates/${estimateId}`)
+    revalidatePath(`/estimates/${estimateId}/work-items`)
+    return { success: true, data: createdItems }
+  } catch (error) {
+    console.error("Error creating work items from rates:", error)
+    return { success: false, error: "Failed to create work items from rates" }
+  }
+}
+
 export async function deleteWorkItem(id: string) {
   try {
     const workItem = await prisma.workItem.findUnique({
