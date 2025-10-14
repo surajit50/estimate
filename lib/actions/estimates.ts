@@ -65,13 +65,9 @@ export async function createEstimate(data: {
   description?: string
   location?: string
   activityCode?: string
-  cgstPercent?: number
-  sgstPercent?: number
-  cessPercent?: number
-  contingency?: number
 }) {
   try {
-    const { title, category, description, location, activityCode, cgstPercent, sgstPercent, cessPercent, contingency } = data
+    const { title, category, description, location, activityCode } = data
 
     // Validation
     if (!title || !category) {
@@ -89,10 +85,6 @@ export async function createEstimate(data: {
         description: description?.trim() || null,
         location: location?.trim() || null,
         activityCode: activityCode?.trim() || null,
-        cgstPercent: cgstPercent ? parseFloat(cgstPercent.toString()) : 9,
-        sgstPercent: sgstPercent ? parseFloat(sgstPercent.toString()) : 9,
-        cessPercent: cessPercent ? parseFloat(cessPercent.toString()) : 1,
-        contingency: contingency ? parseFloat(contingency.toString()) : 0,
       },
     })
 
@@ -115,10 +107,6 @@ export async function updateEstimate(id: string, data: {
   description?: string
   location?: string
   activityCode?: string
-  cgstPercent?: number
-  sgstPercent?: number
-  cessPercent?: number
-  contingency?: number
 }) {
   try {
     const estimate = await prisma.estimate.update({
@@ -137,6 +125,36 @@ export async function updateEstimate(id: string, data: {
   } catch (error) {
     console.error("Error updating estimate:", error)
     return { success: false, error: "Failed to update estimate" }
+  }
+}
+
+export async function freezeEstimate(id: string) {
+  try {
+    const estimate = await prisma.estimate.update({
+      where: { id },
+      data: { isFrozen: true },
+    })
+    revalidatePath(`/estimates/${id}`)
+    revalidatePath(`/estimates/${id}/work-items`)
+    return { success: true, data: estimate }
+  } catch (error) {
+    console.error("Error freezing estimate:", error)
+    return { success: false, error: "Failed to freeze estimate" }
+  }
+}
+
+export async function unfreezeEstimate(id: string) {
+  try {
+    const estimate = await prisma.estimate.update({
+      where: { id },
+      data: { isFrozen: false },
+    })
+    revalidatePath(`/estimates/${id}`)
+    revalidatePath(`/estimates/${id}/work-items`)
+    return { success: true, data: estimate }
+  } catch (error) {
+    console.error("Error unfreezing estimate:", error)
+    return { success: false, error: "Failed to unfreeze estimate" }
   }
 }
 

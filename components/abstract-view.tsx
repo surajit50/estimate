@@ -26,10 +26,6 @@ interface Estimate {
   description: string | null
   location: string | null
   createdAt: Date
-  cgstPercent: number
-  sgstPercent: number
-  cessPercent: number
-  contingency: number
   workItems: WorkItem[]
 }
 
@@ -40,12 +36,7 @@ interface AbstractViewProps {
 export function AbstractView({ estimate }: AbstractViewProps) {
   const subTotal = estimate.workItems.reduce((sum, item) => sum + item.amount, 0)
 
-  const cgst = (subTotal * estimate.cgstPercent) / 100
-  const sgst = (subTotal * estimate.sgstPercent) / 100
-  const lwCess = (subTotal * estimate.cessPercent) / 100
-  const contingency = (subTotal * estimate.contingency) / 100
-
-  const totalAmount = subTotal + cgst + sgst + lwCess + contingency
+  const totalAmount = subTotal
 
   return (
     <div className="space-y-6">
@@ -126,49 +117,7 @@ export function AbstractView({ estimate }: AbstractViewProps) {
                 </TableCell>
               </TableRow>
 
-              {estimate.cgstPercent > 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-right">
-                    Add CGST @ {estimate.cgstPercent}%:
-                  </TableCell>
-                  <TableCell className="text-right">
-                    ₹{cgst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </TableCell>
-                </TableRow>
-              )}
-
-              {estimate.sgstPercent > 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-right">
-                    Add SGST @ {estimate.sgstPercent}%:
-                  </TableCell>
-                  <TableCell className="text-right">
-                    ₹{sgst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </TableCell>
-                </TableRow>
-              )}
-
-              {estimate.cessPercent > 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-right">
-                    Add L.W. Cess @ {estimate.cessPercent}%:
-                  </TableCell>
-                  <TableCell className="text-right">
-                    ₹{lwCess.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </TableCell>
-                </TableRow>
-              )}
-
-              {estimate.contingency > 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-right">
-                    Add Contingency @ {estimate.contingency}%:
-                  </TableCell>
-                  <TableCell className="text-right">
-                    ₹{contingency.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </TableCell>
-                </TableRow>
-              )}
+              
 
               <TableRow className="bg-primary/10 border-t-2 border-primary">
                 <TableCell colSpan={5} className="text-right font-bold text-lg">

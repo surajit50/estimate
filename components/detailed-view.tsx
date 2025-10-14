@@ -10,11 +10,7 @@ interface DetailedViewProps {
 
 export function DetailedView({ estimate }: DetailedViewProps) {
   const subtotal = estimate.workItems.reduce((sum, item) => sum + item.amount, 0)
-  const cgstAmount = (subtotal * (estimate.cgstPercent ?? 0)) / 100
-  const sgstAmount = (subtotal * (estimate.sgstPercent ?? 0)) / 100
-  const lwCessAmount = (subtotal * (estimate.cessPercent ?? 0)) / 100
-  const contingencyAmount = (subtotal * (estimate.contingency ?? 0)) / 100
-  const grandTotal = subtotal + cgstAmount + sgstAmount + lwCessAmount + contingencyAmount
+  const grandTotal = subtotal
 
   return (
     <div className="space-y-6">
@@ -114,41 +110,7 @@ export function DetailedView({ estimate }: DetailedViewProps) {
                 <TableCell className="text-right">₹ {subtotal.toFixed(2)}</TableCell>
               </TableRow>
 
-              {(estimate.cgstPercent ?? 0) > 0 && (
-                <TableRow>
-                  <TableCell colSpan={10} className="text-right">
-                    CGST @ {estimate.cgstPercent}%:
-                  </TableCell>
-                  <TableCell className="text-right">₹ {cgstAmount.toFixed(2)}</TableCell>
-                </TableRow>
-              )}
-
-              {(estimate.sgstPercent ?? 0) > 0 && (
-                <TableRow>
-                  <TableCell colSpan={10} className="text-right">
-                    SGST @ {estimate.sgstPercent}%:
-                  </TableCell>
-                  <TableCell className="text-right">₹ {sgstAmount.toFixed(2)}</TableCell>
-                </TableRow>
-              )}
-
-              {(estimate.cessPercent ?? 0) > 0 && (
-                <TableRow>
-                  <TableCell colSpan={10} className="text-right">
-                    L.W. Cess @ {estimate.cessPercent}%:
-                  </TableCell>
-                  <TableCell className="text-right">₹ {lwCessAmount.toFixed(2)}</TableCell>
-                </TableRow>
-              )}
-
-              {(estimate.contingency ?? 0) > 0 && (
-                <TableRow>
-                  <TableCell colSpan={10} className="text-right">
-                    Contingency @ {estimate.contingency}%:
-                  </TableCell>
-                  <TableCell className="text-right">₹ {contingencyAmount.toFixed(2)}</TableCell>
-                </TableRow>
-              )}
+              
 
               <TableRow className="border-t-2 font-bold text-lg">
                 <TableCell colSpan={10} className="text-right">

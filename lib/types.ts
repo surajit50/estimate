@@ -20,43 +20,6 @@ export interface EstimateWithItems {
   activityCode?: string | null
   parameters?: any
   
-  // Client Information
-  clientName?: string | null
-  clientContact?: string | null
-  clientEmail?: string | null
-  clientAddress?: string | null
-  
-  // Project Timeline
-  startDate?: Date | null
-  endDate?: Date | null
-  duration?: number | null
-  
-  // Budget Tracking
-  estimatedBudget?: number
-  actualCost?: number
-  variance?: number
-  
-  // Status and Priority
-  status?: string
-  priority?: string
-  
-  // Tags
-  tags?: string[]
-  
-  // Tax Configuration
-  cgstPercent?: number
-  sgstPercent?: number
-  cessPercent?: number
-  
-  // Additional Costs
-  contingency?: number
-  overhead?: number
-  profitMargin?: number
-  discount?: number
-  
-  // Notes and Attachments
-  notes?: string | null
-  attachments?: string[]
   
   createdAt: Date
   updatedAt: Date

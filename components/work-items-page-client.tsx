@@ -26,7 +26,9 @@ import {
   TrendingUp,
   AlertCircle
 } from "lucide-react"
-import { createWorkItem, updateWorkItem, deleteWorkItem, createWorkItemsFromDatabase } from "@/lib/actions/work-items"
+import { createWorkItem, updateWorkItem, deleteWorkItem, createWorkItemsFromDatabase, createWorkItemsFromRateLibrary } from "@/lib/actions/work-items"
+import { freezeEstimate, unfreezeEstimate } from "@/lib/actions/estimates"
+import { EditWorkItemDialog } from "@/components/edit-work-item-dialog"
 import type { EstimateWithItems, UnitMasterType, RateLibraryType, WorkItemWithUnit } from "@/lib/types"
 
 interface WorkItemsPageClientProps {
@@ -61,8 +63,9 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
   const [editingItem, setEditingItem] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
-  const [showDatabaseSelection, setShowDatabaseSelection] = useState(false)
-  const [selectedDatabaseItems, setSelectedDatabaseItems] = useState<string[]>([])
+  const [showRateSelection, setShowRateSelection] = useState(false)
+  const [selectedRateIds, setSelectedRateIds] = useState<string[]>([])
+  const [isFrozen, setIsFrozen] = useState<boolean>(!!(estimate as any).isFrozen)
   
   const [newItem, setNewItem] = useState<NewWorkItemForm>({
     description: "",
@@ -93,27 +96,38 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
 
   const nextItemNo = workItems.length > 0 ? Math.max(...workItems.map(item => item.itemNo)) + 1 : 1
 
-  const calculateAmount = (item: NewWorkItemForm) => {
+  const isAreaUnit = (unitSymbol: string) => {
+    const s = unitSymbol.trim().toLowerCase()
+    return s === "m2" || s === "m²" || s === "sqm" || s === "sq m" || s === "sq. m"
+  }
+
+  const isVolumeUnit = (unitSymbol: string) => {
+    const s = unitSymbol.trim().toLowerCase()
+    return s === "m3" || s === "m³" || s === "cum" || s === "cu m" || s === "cu. m"
+  }
+
+  const computeQuantityForUnit = (item: { unitId: string; length: number; width: number; height: number; quantity: number; }) => {
     const unit = units.find(u => u.id === item.unitId)
-    const unitSymbol = unit?.unitSymbol?.toLowerCase() || ""
-    
-    let calculatedQuantity = item.quantity
-    
-    // Calculate quantity based on unit type
-    if (unitSymbol === "m2" || unitSymbol === "m²") {
-      calculatedQuantity = item.length * item.width
-    } else if (unitSymbol === "m3" || unitSymbol === "m³") {
-      calculatedQuantity = item.length * item.width * item.height
+    const unitSymbol = unit?.unitSymbol || ""
+    if (isAreaUnit(unitSymbol)) {
+      return (item.length || 0) * (item.width || 0)
     }
-    
+    if (isVolumeUnit(unitSymbol)) {
+      return (item.length || 0) * (item.width || 0) * (item.height || 0)
+    }
+    return item.quantity || 0
+  }
+
+  const calculateAmount = (item: NewWorkItemForm) => {
+    const calculatedQuantity = computeQuantityForUnit(item)
     const baseAmount = calculatedQuantity * item.rate
     const discountAmount = (baseAmount * item.discount) / 100
     const profitAmount = ((baseAmount - discountAmount) * item.profitMargin) / 100
-    
     return baseAmount - discountAmount + profitAmount
   }
 
   const handleAddItem = async () => {
+    if (isFrozen) return
     if (!newItem.description || !newItem.unitId || newItem.rate <= 0) {
       return
     }
@@ -121,6 +135,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
     setIsSaving(true)
     try {
       const amount = calculateAmount(newItem)
+      const calculatedQuantity = computeQuantityForUnit(newItem)
       
       const result = await createWorkItem({
         estimateId: estimate.id,
@@ -128,7 +143,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
         description: newItem.description,
         unitId: newItem.unitId,
         rate: newItem.rate,
-        quantity: newItem.quantity,
+        quantity: calculatedQuantity,
         length: newItem.length,
         width: newItem.width,
         height: newItem.height,
@@ -173,6 +188,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
   }
 
   const handleUpdateItem = async (itemId: string, updates: Partial<WorkItemWithUnit>) => {
+    if (isFrozen) return
     setIsUpdating(itemId)
     try {
       const result = await updateWorkItem(itemId, updates)
@@ -190,6 +206,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
   }
 
   const handleDeleteItem = async (itemId: string) => {
+    if (isFrozen) return
     setIsDeleting(itemId)
     try {
       const result = await deleteWorkItem(itemId)
@@ -208,33 +225,40 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
   }
 
   const getCalculatedQuantity = (item: WorkItemWithUnit) => {
-    const unit = units.find(u => u.id === item.unitId)
-    const unitSymbol = unit?.unitSymbol?.toLowerCase() || ""
-    
-    if (unitSymbol === "m2" || unitSymbol === "m²") {
-      return (item.length || 0) * (item.width || 0)
-    } else if (unitSymbol === "m3" || unitSymbol === "m³") {
-      return (item.length || 0) * (item.width || 0) * (item.height || 0)
-    }
-    
-    return item.quantity || 0
+    return computeQuantityForUnit({
+      unitId: item.unitId,
+      length: item.length,
+      width: item.width,
+      height: item.height,
+      quantity: item.quantity,
+    })
   }
 
-  const handleAddFromDatabase = async () => {
-    if (selectedDatabaseItems.length === 0) return
+  // Keep quantity in sync for computed units while editing the new item form
+  useEffect(() => {
+    if (!newItem.unitId) return
+    const unit = units.find(u => u.id === newItem.unitId)
+    const unitSymbol = unit?.unitSymbol || ""
+    if (isAreaUnit(unitSymbol) || isVolumeUnit(unitSymbol)) {
+      const q = computeQuantityForUnit(newItem)
+      if (q !== newItem.quantity) {
+        setNewItem({ ...newItem, quantity: q })
+      }
+    }
+  }, [newItem.unitId, newItem.length, newItem.width, newItem.height])
+
+  const handleAddFromRates = async () => {
+    if (isFrozen) return
+    if (selectedRateIds.length === 0) return
 
     setIsSaving(true)
     try {
-      console.log("Adding items from database:", selectedDatabaseItems)
-      console.log("Available work items:", allWorkItems.length)
-      
-      const result = await createWorkItemsFromDatabase({
+      const result = await createWorkItemsFromRateLibrary({
         estimateId: estimate.id,
-        sourceItemIds: selectedDatabaseItems
+        rateIds: selectedRateIds,
       })
 
       if (result.success && result.data) {
-        console.log("Successfully added items:", result.data.length)
         // Refresh the page to show updated data
         window.location.reload()
       } else {
@@ -242,11 +266,11 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
         alert(`Failed to add items: ${result.error}`)
       }
 
-      setSelectedDatabaseItems([])
-      setShowDatabaseSelection(false)
+      setSelectedRateIds([])
+      setShowRateSelection(false)
     } catch (error) {
-      console.error("Error adding items from database:", error)
-      alert("Error adding items from database")
+      console.error("Error adding items from rate library:", error)
+      alert("Error adding items from rate library")
     } finally {
       setIsSaving(false)
     }
@@ -254,6 +278,32 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
 
   return (
     <div className="space-y-6">
+      {/* Finalize / Unfreeze Controls */}
+      <div className="flex items-center justify-between">
+        <div />
+        <div className="flex items-center gap-2">
+          {isFrozen ? (
+            <Button
+              variant="outline"
+              onClick={async () => {
+                const res = await unfreezeEstimate(estimate.id)
+                if (res.success) setIsFrozen(false)
+              }}
+            >
+              Unfreeze Estimate
+            </Button>
+          ) : (
+            <Button
+              onClick={async () => {
+                const res = await freezeEstimate(estimate.id)
+                if (res.success) setIsFrozen(true)
+              }}
+            >
+              Finalize Estimate
+            </Button>
+          )}
+        </div>
+      </div>
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
@@ -317,37 +367,31 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
         </Card>
       </div>
 
-      {/* Database Selection */}
+      {/* Rate Library Selection */}
       <Card className="border-2 border-dashed border-blue-200">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5 text-blue-500" />
-              Select from Database
+              Select from Rate Library
             </CardTitle>
             <Button
               variant="outline"
-              onClick={() => setShowDatabaseSelection(!showDatabaseSelection)}
+              onClick={() => setShowRateSelection(!showRateSelection)}
+              disabled={isFrozen}
             >
-              {showDatabaseSelection ? <X className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-              {showDatabaseSelection ? "Cancel" : "Browse Items"}
+              {showRateSelection ? <X className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+              {showRateSelection ? "Cancel" : "Browse Rates"}
             </Button>
           </div>
         </CardHeader>
         
-        {showDatabaseSelection && (
+        {showRateSelection && (
           <CardContent>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Select work items from existing estimates to add to this project.
+                Select standard items from the rate library to add to this estimate.
               </p>
-              
-              {/* Debug Info */}
-              <div className="text-xs text-muted-foreground bg-gray-50 p-2 rounded">
-                <p>Total work items in database: {allWorkItems.length}</p>
-                <p>Items from other estimates: {allWorkItems.filter(item => item.estimate.id !== estimate.id).length}</p>
-                <p>Current estimate ID: {estimate.id}</p>
-              </div>
               
               <div className="max-h-96 overflow-y-auto border rounded-lg">
                 <Table>
@@ -355,84 +399,72 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                     <TableRow>
                       <TableHead className="w-12">Select</TableHead>
                       <TableHead>Description</TableHead>
-                      <TableHead>From Estimate</TableHead>
                       <TableHead>Unit</TableHead>
-                      <TableHead className="text-right">Rate (₹)</TableHead>
+                      <TableHead className="text-right">Standard Rate (₹)</TableHead>
+                      <TableHead className="text-right">Year</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {allWorkItems
-                      .filter(item => item.estimate.id !== estimate.id) // Exclude current estimate
-                      .length > 0 ? (
-                        allWorkItems
-                          .filter(item => item.estimate.id !== estimate.id)
-                          .map((item) => (
-                            <TableRow key={item.id}>
-                              <TableCell>
-                                <Checkbox
-                                  checked={selectedDatabaseItems.includes(item.id)}
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      setSelectedDatabaseItems([...selectedDatabaseItems, item.id])
-                                    } else {
-                                      setSelectedDatabaseItems(selectedDatabaseItems.filter(id => id !== item.id))
-                                    }
-                                  }}
-                                />
-                              </TableCell>
-                              <TableCell className="max-w-[300px]">
-                                <div className="font-medium">{item.description}</div>
-                                {item.pageRef && (
-                                  <div className="text-xs text-muted-foreground mt-1">Ref: {item.pageRef}</div>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <div>
-                                  <div className="font-medium">{item.estimate.title}</div>
-                                  <div className="text-xs text-muted-foreground">{item.estimate.category}</div>
-                                </div>
-                              </TableCell>
-                              <TableCell>{item.unit.unitSymbol}</TableCell>
-                              <TableCell className="text-right">{item.rate.toFixed(2)}</TableCell>
-                            </TableRow>
-                          ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                            <div className="flex flex-col items-center gap-2">
-                              <Package className="h-8 w-8 text-muted-foreground/50" />
-                              <p>No work items found in other estimates</p>
-                              <p className="text-xs">Create some work items in other estimates first</p>
-                            </div>
+                    {rates.length > 0 ? (
+                      rates.map((rate) => (
+                        <TableRow key={rate.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedRateIds.includes(rate.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedRateIds([...selectedRateIds, rate.id])
+                                } else {
+                                  setSelectedRateIds(selectedRateIds.filter(id => id !== rate.id))
+                                }
+                              }}
+                            />
                           </TableCell>
+                          <TableCell className="max-w-[300px]">
+                            <div className="font-medium">{rate.description}</div>
+                          </TableCell>
+                          <TableCell>{rate.unit.unitSymbol}</TableCell>
+                          <TableCell className="text-right">{rate.standardRate.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">{rate.year || "-"}</TableCell>
                         </TableRow>
-                      )}
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                          <div className="flex flex-col items-center gap-2">
+                            <Package className="h-8 w-8 text-muted-foreground/50" />
+                            <p>No rates found in library</p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </div>
 
-              {selectedDatabaseItems.length > 0 && (
+              {selectedRateIds.length > 0 && (
                 <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
                   <span className="text-sm font-medium">
-                    {selectedDatabaseItems.length} item(s) selected
+                    {selectedRateIds.length} item(s) selected
                   </span>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      onClick={() => setSelectedDatabaseItems([])}
+                      onClick={() => setSelectedRateIds([])}
+                      disabled={isFrozen}
                     >
                       Clear Selection
                     </Button>
                     <Button
-                      onClick={handleAddFromDatabase}
-                      disabled={isSaving}
+                      onClick={handleAddFromRates}
+                      disabled={isSaving || isFrozen}
                     >
                       {isSaving ? (
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       ) : (
                         <Plus className="h-4 w-4 mr-2" />
                       )}
-                      {isSaving ? "Adding..." : `Add ${selectedDatabaseItems.length} Item(s)`}
+                      {isSaving ? "Adding..." : `Add ${selectedRateIds.length} Item(s)`}
                     </Button>
                   </div>
                 </div>
@@ -453,6 +485,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
             <Button
               variant="outline"
               onClick={() => setIsAddingItem(!isAddingItem)}
+              disabled={isFrozen}
             >
               {isAddingItem ? <X className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
               {isAddingItem ? "Cancel" : "Add Item"}
@@ -460,7 +493,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
           </div>
         </CardHeader>
         
-        {isAddingItem && (
+        {isAddingItem && !isFrozen && (
           <CardContent>
             <form ref={formRef} className="space-y-6">
               {/* Basic Information */}
@@ -523,10 +556,30 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                     id="quantity"
                     type="number"
                     step="0.001"
-                    placeholder="0.000"
+                    placeholder={(() => {
+                      const unit = units.find(u => u.id === newItem.unitId)
+                      const s = unit?.unitSymbol || ""
+                      return isAreaUnit(s) || isVolumeUnit(s) ? "Auto-calculated" : "0.000"
+                    })()}
                     value={newItem.quantity || ""}
+                    disabled={(() => {
+                      const unit = units.find(u => u.id === newItem.unitId)
+                      const s = unit?.unitSymbol || ""
+                      return isAreaUnit(s) || isVolumeUnit(s)
+                    })()}
                     onChange={(e) => setNewItem({ ...newItem, quantity: parseFloat(e.target.value) || 0 })}
                   />
+                  {(() => {
+                    const unit = units.find(u => u.id === newItem.unitId)
+                    const s = unit?.unitSymbol || ""
+                    if (isAreaUnit(s)) {
+                      return <p className="text-xs text-muted-foreground">Quantity = Length × Width (auto)</p>
+                    }
+                    if (isVolumeUnit(s)) {
+                      return <p className="text-xs text-muted-foreground">Quantity = Length × Width × Height (auto)</p>
+                    }
+                    return null
+                  })()}
                 </div>
               </div>
 
@@ -708,7 +761,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                 <Button
                   type="button"
                   onClick={handleAddItem}
-                  disabled={isSaving || !newItem.description || !newItem.unitId || newItem.rate <= 0}
+                  disabled={isFrozen || isSaving || !newItem.description || !newItem.unitId || newItem.rate <= 0}
                 >
                   {isSaving ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -788,7 +841,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                             variant="ghost"
                             size="sm"
                             onClick={() => setEditingItem(editingItem === item.id ? null : item.id)}
-                            disabled={isUpdating === item.id}
+                            disabled={isFrozen || isUpdating === item.id}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -796,7 +849,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteItem(item.id)}
-                            disabled={isDeleting === item.id}
+                            disabled={isFrozen || isDeleting === item.id}
                           >
                             {isDeleting === item.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -823,6 +876,20 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Work Item Dialog */}
+      <EditWorkItemDialog
+        item={workItems.find(w => w.id === editingItem) ?? null}
+        onOpenChange={(open) => {
+          if (!open) setEditingItem(null)
+        }}
+        onEdit={(updated) => {
+          setWorkItems(workItems.map(w => (w.id === updated.id ? updated : w)))
+          setEditingItem(null)
+        }}
+        units={units}
+        rates={rates}
+      />
     </div>
   )
 }
