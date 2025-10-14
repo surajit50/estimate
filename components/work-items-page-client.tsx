@@ -141,20 +141,12 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
 
   const handleAddItem = async () => {
     if (isFrozen) {
-      toast({
-        title: "Estimate Frozen",
-        description: "Cannot add items to a frozen estimate",
-        variant: "destructive",
-      })
+      
       return
     }
     
     if (!newItem.description || !newItem.unitId || newItem.rate <= 0) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in description, unit, and rate",
-        variant: "destructive",
-      })
+      
       return
     }
 
@@ -206,20 +198,12 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
         setIsAddingItem(false)
         formRef.current?.reset()
         
-        toast({
-          title: "Item Added",
-          description: "Work item has been added successfully",
-        })
+        
       } else {
         throw new Error(result.error || "Failed to add item")
       }
     } catch (error) {
       console.error("Error adding work item:", error)
-      toast({
-        title: "Error",
-        description: "Failed to add work item",
-        variant: "destructive",
-      })
     } finally {
       setIsSaving(false)
     }
@@ -227,11 +211,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
 
   const handleUpdateItem = async (itemId: string, updates: Partial<WorkItemWithUnit>) => {
     if (isFrozen) {
-      toast({
-        title: "Estimate Frozen",
-        description: "Cannot modify frozen estimate items",
-        variant: "destructive",
-      })
+      
       return
     }
     
@@ -243,20 +223,13 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
           item.id === itemId ? result.data! as unknown as WorkItemWithUnit : item
         ))
         setEditingItem(null)
-        toast({
-          title: "Item Updated",
-          description: "Work item has been updated successfully",
-        })
+        
       } else {
         throw new Error(result.error || "Failed to update item")
       }
     } catch (error) {
       console.error("Error updating work item:", error)
-      toast({
-        title: "Error",
-        description: "Failed to update work item",
-        variant: "destructive",
-      })
+      
     } finally {
       setIsUpdating(null)
     }
@@ -264,11 +237,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
 
   const handleDeleteItem = async (itemId: string) => {
     if (isFrozen) {
-      toast({
-        title: "Estimate Frozen",
-        description: "Cannot delete items from a frozen estimate",
-        variant: "destructive",
-      })
+      
       return
     }
     
@@ -277,20 +246,13 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
       const result = await deleteWorkItem(itemId)
       if (result.success) {
         setWorkItems(workItems.filter(item => item.id !== itemId))
-        toast({
-          title: "Item Deleted",
-          description: "Work item has been deleted successfully",
-        })
+        
       } else {
         throw new Error(result.error || "Failed to delete item")
       }
     } catch (error) {
       console.error("Error deleting work item:", error)
-      toast({
-        title: "Error",
-        description: "Failed to delete work item",
-        variant: "destructive",
-      })
+      
     } finally {
       setIsDeleting(null)
     }
@@ -325,20 +287,12 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
 
   const handleAddFromRates = async () => {
     if (isFrozen) {
-      toast({
-        title: "Estimate Frozen",
-        description: "Cannot add items to a frozen estimate",
-        variant: "destructive",
-      })
+      
       return
     }
     
     if (selectedRateIds.length === 0) {
-      toast({
-        title: "No Items Selected",
-        description: "Please select items from the rate library",
-        variant: "destructive",
-      })
+      
       return
     }
 
@@ -352,10 +306,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
       if (result.success && result.data) {
         // Refresh the page to show updated data
         window.location.reload()
-        toast({
-          title: "Items Added",
-          description: `${selectedRateIds.length} items added from rate library`,
-        })
+        
       } else {
         throw new Error(result.error || "Failed to add items")
       }
@@ -364,11 +315,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
       setShowRateSelection(false)
     } catch (error) {
       console.error("Error adding items from rate library:", error)
-      toast({
-        title: "Error",
-        description: "Failed to add items from rate library",
-        variant: "destructive",
-      })
+      
     } finally {
       setIsSaving(false)
     }
@@ -402,10 +349,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                 const res = await unfreezeEstimate(estimate.id)
                 if (res.success) {
                   setIsFrozen(false)
-                  toast({
-                    title: "Estimate Unfrozen",
-                    description: "You can now modify work items",
-                  })
+                  
                 }
               }}
               className="gap-2"
@@ -419,10 +363,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                 const res = await freezeEstimate(estimate.id)
                 if (res.success) {
                   setIsFrozen(true)
-                  toast({
-                    title: "Estimate Finalized",
-                    description: "Work items are now locked",
-                  })
+                
                 }
               }}
               className="gap-2"
