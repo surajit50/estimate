@@ -416,10 +416,6 @@ async function main() {
         drainageLength: '2.0 km',
         projectType: 'Rural Road as per MORD specifications'
       },
-      cgstPercent: 9.0,
-      sgstPercent: 9.0,
-      cessPercent: 1.0,
-      contingency: 5.0
     }
   });
 
@@ -438,10 +434,7 @@ async function main() {
         slopeProtection: 'Jute Geotextile',
         projectType: 'Bridge Approach as per MORT&H specifications'
       },
-      cgstPercent: 9.0,
-      sgstPercent: 9.0,
-      cessPercent: 1.0,
-      contingency: 8.0
+      
     }
   });
 

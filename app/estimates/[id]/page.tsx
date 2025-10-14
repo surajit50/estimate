@@ -105,25 +105,8 @@ export default async function ViewEstimatePage({ params }: { params: Promise<{ i
                   <div className="flex gap-2 mt-2 flex-wrap">
                     <Badge variant="secondary">{estimate.category}</Badge>
                     {estimate.location && <Badge variant="outline">{estimate.location}</Badge>}
-                    <Badge variant={estimate.status === 'completed' ? 'default' : estimate.status === 'approved' ? 'default' : 'secondary'}>
-                      {estimate.status?.replace('-', ' ').toUpperCase()}
-                    </Badge>
-                    <Badge variant={estimate.priority === 'urgent' ? 'destructive' : estimate.priority === 'high' ? 'destructive' : 'outline'}>
-                      {estimate.priority?.toUpperCase()}
-                    </Badge>
                   </div>
                   {estimate.description && <p className="text-sm text-muted-foreground mt-2">{estimate.description}</p>}
-                  
-                  {/* Tags */}
-                  {estimate.tags && estimate.tags.length > 0 && (
-                    <div className="flex gap-1 mt-2 flex-wrap">
-                      {estimate.tags.map((tag) => (
-                        <Badge key={tag} variant="outline" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-muted-foreground">Created</p>
@@ -133,145 +116,13 @@ export default async function ViewEstimatePage({ params }: { params: Promise<{ i
             </CardHeader>
           </Card>
 
-          {/* Client Information */}
-          {(estimate.clientName || estimate.clientContact || estimate.clientEmail || estimate.clientAddress) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Client Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {estimate.clientName && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Client Name</p>
-                      <p className="font-medium">{estimate.clientName}</p>
-                    </div>
-                  )}
-                  {estimate.clientContact && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Contact</p>
-                      <p className="font-medium">{estimate.clientContact}</p>
-                    </div>
-                  )}
-                  {estimate.clientEmail && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Email</p>
-                      <p className="font-medium">{estimate.clientEmail}</p>
-                    </div>
-                  )}
-                  {estimate.clientAddress && (
-                    <div className="md:col-span-2">
-                      <p className="text-sm text-muted-foreground">Address</p>
-                      <p className="font-medium">{estimate.clientAddress}</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          
 
-          {/* Project Timeline */}
-          {(estimate.startDate || estimate.endDate || estimate.duration) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Project Timeline</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {estimate.startDate && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Start Date</p>
-                      <p className="font-medium">{format(new Date(estimate.startDate), "dd MMM yyyy")}</p>
-                    </div>
-                  )}
-                  {estimate.endDate && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">End Date</p>
-                      <p className="font-medium">{format(new Date(estimate.endDate), "dd MMM yyyy")}</p>
-                    </div>
-                  )}
-                  {estimate.duration && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Duration</p>
-                      <p className="font-medium">{estimate.duration} days</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          
 
-          {/* Budget Information */}
-          {(estimate.estimatedBudget || estimate.actualCost || estimate.contingency || estimate.overhead || estimate.profitMargin || estimate.discount) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Budget & Financial Details</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {estimate.estimatedBudget > 0 && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Estimated Budget</p>
-                      <p className="font-medium">₹{estimate.estimatedBudget.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
-                    </div>
-                  )}
-                  {estimate.actualCost > 0 && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Actual Cost</p>
-                      <p className="font-medium">₹{estimate.actualCost.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
-                    </div>
-                  )}
-                  {estimate.contingency > 0 && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Contingency</p>
-                      <p className="font-medium">₹{estimate.contingency.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
-                    </div>
-                  )}
-                  {estimate.overhead > 0 && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Overhead</p>
-                      <p className="font-medium">₹{estimate.overhead.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
-                    </div>
-                  )}
-                  {estimate.profitMargin > 0 && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Profit Margin</p>
-                      <p className="font-medium">{estimate.profitMargin}%</p>
-                    </div>
-                  )}
-                  {estimate.discount > 0 && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Discount</p>
-                      <p className="font-medium">₹{estimate.discount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          
 
-          {/* Tax Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Tax Configuration</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">CGST</p>
-                  <p className="font-medium">{estimate.cgstPercent}%</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">SGST</p>
-                  <p className="font-medium">{estimate.sgstPercent}%</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">L.W. Cess</p>
-                  <p className="font-medium">{estimate.cessPercent}%</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          
 
           
 

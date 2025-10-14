@@ -11,41 +11,6 @@ export const estimateSchema = z.object({
   description: z.string().optional().default(""),
   location: z.string().optional().default(""),
   activityCode: z.string().optional().default(""),
-  
-  // Client Information
-  clientName: z.string().optional().default(""),
-  clientContact: z.string().optional().default(""),
-  clientEmail: z.string().email("Invalid email").optional().default(""),
-  clientAddress: z.string().optional().default(""),
-  
-  // Project Timeline
-  startDate: z.string().optional().default(""),
-  endDate: z.string().optional().default(""),
-  duration: z.coerce.number().positive("Must be > 0").optional(),
-  
-  // Budget Tracking
-  estimatedBudget: z.coerce.number().min(0, "Must be ≥ 0").default(0),
-  actualCost: z.coerce.number().min(0, "Must be ≥ 0").default(0),
-  
-  // Status and Priority
-  status: z.enum(["draft", "in-progress", "completed", "approved", "rejected"]).default("draft"),
-  priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
-  
-  // Tags
-  tags: z.array(z.string()).default([]),
-  
-  // Tax Configuration
-  cgstPercent: z.coerce.number().nonnegative("Must be ≥ 0"),
-  sgstPercent: z.coerce.number().nonnegative("Must be ≥ 0"),
-  cessPercent: z.coerce.number().nonnegative("Must be ≥ 0"),
-  
-  // Additional Costs
-  contingency: z.coerce.number().min(0, "Must be ≥ 0"),
-  overhead: z.coerce.number().min(0, "Must be ≥ 0").default(0),
-  profitMargin: z.coerce.number().min(0, "Must be ≥ 0").max(100, "Must be ≤ 100").default(10),
-  discount: z.coerce.number().min(0, "Must be ≥ 0").default(0),
-  
-  
 })
 
 export type EstimateFormValues = z.infer<typeof estimateSchema>
