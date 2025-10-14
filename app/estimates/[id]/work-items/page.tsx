@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { ArrowLeft, Download, FileSpreadsheet, Plus, Save, X, Edit, Trash2, Check } from "lucide-react"
+import { ArrowLeft, Download, FileSpreadsheet, Plus, Save, X, Edit, Trash2, Check, MoreVertical, FileText } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,15 +73,26 @@ export default async function WorkItemsPage({ params }: { params: Promise<{ id: 
               <p className="text-muted-foreground">Manage work items, quantities, and calculations</p>
             </div>
             <div className="flex items-center gap-2">
+              <Link href={`/estimates/${id}/detailed`}>
+                <Button variant="outline">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Detailed View
+                </Button>
+              </Link>
+              <Link href={`/estimates/${id}/abstract`}>
+                <Button>
+                  <FileText className="h-4 w-4 mr-2" />
+                  View Abstract
+                </Button>
+              </Link>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export
+                  <Button variant="outline" size="icon" aria-label="More actions">
+                    <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Export Options</DropdownMenuLabel>
+                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link
@@ -125,9 +136,6 @@ export default async function WorkItemsPage({ params }: { params: Promise<{ id: 
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Link href={`/estimates/${id}/abstract`}>
-                <Button>View Abstract</Button>
-              </Link>
             </div>
           </div>
         </div>

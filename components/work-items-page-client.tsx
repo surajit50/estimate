@@ -342,12 +342,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                 Select work items from existing estimates to add to this project.
               </p>
               
-              {/* Debug Info */}
-              <div className="text-xs text-muted-foreground bg-gray-50 p-2 rounded">
-                <p>Total work items in database: {allWorkItems.length}</p>
-                <p>Items from other estimates: {allWorkItems.filter(item => item.estimate.id !== estimate.id).length}</p>
-                <p>Current estimate ID: {estimate.id}</p>
-              </div>
+              {/* Debug Info removed for cleaner UI */}
               
               <div className="max-h-96 overflow-y-auto border rounded-lg">
                 <Table>
@@ -748,9 +743,6 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                     <TableHead className="w-20 text-right">Height</TableHead>
                     <TableHead className="w-24 text-right">Quantity</TableHead>
                     <TableHead className="w-24 text-right">Rate (₹)</TableHead>
-                    <TableHead className="w-24 text-right">Material (₹)</TableHead>
-                    <TableHead className="w-24 text-right">Labor (₹)</TableHead>
-                    <TableHead className="w-24 text-right">Equipment (₹)</TableHead>
                     <TableHead className="w-24 text-right">Amount (₹)</TableHead>
                     <TableHead className="w-20 text-right">Actions</TableHead>
                   </TableRow>
@@ -776,9 +768,6 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                       <TableCell className="text-right">{(item.height || 0).toFixed(2)}</TableCell>
                       <TableCell className="text-right">{getCalculatedQuantity(item).toFixed(3)}</TableCell>
                       <TableCell className="text-right">{item.rate.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">{(item.materialCost || 0).toFixed(2)}</TableCell>
-                      <TableCell className="text-right">{(item.laborCost || 0).toFixed(2)}</TableCell>
-                      <TableCell className="text-right">{(item.equipmentCost || 0).toFixed(2)}</TableCell>
                       <TableCell className="text-right font-medium">
                         {item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </TableCell>
@@ -809,7 +798,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                     </TableRow>
                   ))}
                   <TableRow className="bg-muted/50 font-bold">
-                    <TableCell colSpan={11} className="text-right">
+                    <TableCell colSpan={8} className="text-right">
                       Total Estimate:
                     </TableCell>
                     <TableCell className="text-right">
