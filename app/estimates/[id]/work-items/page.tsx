@@ -84,21 +84,13 @@ export default async function WorkItemsPage({ params }: { params: Promise<{ id: 
                   <DropdownMenuLabel>Export Options</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link
-                      href={`/api/estimates/${id}/export/pdf`}
-                      target="_blank"
-                      className="cursor-pointer"
-                    >
+                    <Link href={`/api/estimates/${id}/export/pdf`} target="_blank" className="cursor-pointer">
                       <Download className="h-4 w-4 mr-2" />
                       Export as PDF
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link
-                      href={`/api/estimates/${id}/export/excel`}
-                      target="_blank"
-                      className="cursor-pointer"
-                    >
+                    <Link href={`/api/estimates/${id}/export/excel`} target="_blank" className="cursor-pointer">
                       <FileSpreadsheet className="h-4 w-4 mr-2" />
                       Export as Excel
                     </Link>
