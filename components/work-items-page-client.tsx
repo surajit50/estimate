@@ -328,7 +328,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Work Items</h1>
           <p className="text-muted-foreground">
-            Manage work items for estimate #{estimate.estimateNumber}
+            Manage work items for estimate {estimate.title}
           </p>
         </div>
         <div className="flex items-center gap-2">
