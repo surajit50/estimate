@@ -108,23 +108,9 @@ export default async function AbstractBillDetailPage({
                   <DropdownMenuLabel>Export Options</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link
-                      href={`/api/abstract-bills/${id}/export/pdf`}
-                      target="_blank"
-                      className="cursor-pointer"
-                    >
+                    <Link href={`/abstract-bills/${id}/download`} target="_blank" className="cursor-pointer">
                       <Download className="h-4 w-4 mr-2" />
-                      Export as PDF
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href={`/api/abstract-bills/${id}/export/excel`}
-                      target="_blank"
-                      className="cursor-pointer"
-                    >
-                      <FileSpreadsheet className="h-4 w-4 mr-2" />
-                      Export as Excel
+                      Open Print View (PDF)
                     </Link>
                   </DropdownMenuItem>
                 </DropdownMenuContent>

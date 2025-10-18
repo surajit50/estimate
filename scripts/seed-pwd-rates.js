@@ -409,6 +409,11 @@ async function main() {
       description: 'Construction of 5 km rural road with embankment, drainage and erosion control',
       location: 'West Bengal, India',
       activityCode: 'PWD-RR-2024-001',
+      cgstPercent: 9.0,
+      sgstPercent: 9.0,
+      cessPercent: 1.0,
+      contingency: 0.0,
+      contractualPercent: 0.0,
       parameters: {
         roadLength: '5.0 km',
         roadWidth: '3.75 m',
@@ -427,6 +432,11 @@ async function main() {
       description: 'Construction of approach roads for bridge with heavy earthwork and drainage',
       location: 'Darjeeling Hill Area, West Bengal',
       activityCode: 'PWD-BR-2024-002',
+      cgstPercent: 9.0,
+      sgstPercent: 9.0,
+      cessPercent: 1.0,
+      contingency: 0.0,
+      contractualPercent: 0.0,
       parameters: {
         approachLength: '2.0 km',
         bridgeSpan: '50 m',

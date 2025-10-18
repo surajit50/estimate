@@ -65,9 +65,14 @@ export async function createEstimate(data: {
   description?: string
   location?: string
   activityCode?: string
+  cgstPercent?: number
+  sgstPercent?: number
+  cessPercent?: number
+  contingency?: number
+  contractualPercent?: number
 }) {
   try {
-    const { title, category, description, location, activityCode } = data
+    const { title, category, description, location, activityCode, cgstPercent = 0, sgstPercent = 0, cessPercent = 0, contingency = 0, contractualPercent = 0 } = data
 
     // Validation
     if (!title || !category) {
@@ -85,6 +90,11 @@ export async function createEstimate(data: {
         description: description?.trim() || null,
         location: location?.trim() || null,
         activityCode: activityCode?.trim() || null,
+        cgstPercent,
+        sgstPercent,
+        cessPercent,
+        contingency,
+        contractualPercent,
       },
     })
 
@@ -107,6 +117,11 @@ export async function updateEstimate(id: string, data: {
   description?: string
   location?: string
   activityCode?: string
+  cgstPercent?: number
+  sgstPercent?: number
+  cessPercent?: number
+  contingency?: number
+  contractualPercent?: number
 }) {
   try {
     const estimate = await prisma.estimate.update({

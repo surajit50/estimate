@@ -3,7 +3,7 @@
 import * as React from "react"
 
 import { useEffect } from "react"
-import { useForm, useFieldArray } from "react-hook-form"
+import { useForm, useFieldArray, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/button"
 import {
@@ -166,41 +166,42 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
     }
   }, [item, form])
 
-  const watch = form.watch
-  const watchedRate = watch("rate")
-  const watchedUnitId = watch("unitId")
-  const watchedSubItems = watch("subItems")
-  const watchedSubCategories = watch("subCategories")
+  // Reactive watchers for totals (works well with Field Arrays)
+  const watchedRate = Number(useWatch({ control: form.control, name: "rate" }) ?? 0)
+  const watchedUnitId = useWatch({ control: form.control, name: "unitId" }) ?? ""
+  const watchedSubItems = (useWatch({ control: form.control, name: "subItems" }) as any[]) || []
+  const watchedSubCategories = (useWatch({ control: form.control, name: "subCategories" }) as any[]) || []
 
-  const selectedUnitSymbol = React.useMemo(() => {
-    return units.find((u) => u.id === watchedUnitId)?.unitSymbol || ""
-  }, [units, watchedUnitId])
+  const selectedUnitSymbol = React.useMemo(
+    () => units.find((u) => u.id === watchedUnitId)?.unitSymbol || "",
+    [units, watchedUnitId]
+  )
+
+  // Simple helpers to guide quantity behavior
+  const isAreaUnit = (symbol: string) => {
+    const s = (symbol || "").toLowerCase()
+    return s === "m2" || s === "m²" || s.includes("square") || s === "sqm"
+  }
+  const isVolumeUnit = (symbol: string) => {
+    const s = (symbol || "").toLowerCase()
+    return s === "m3" || s === "m³" || s.includes("cubic") || s === "cum"
+  }
 
   const calculateSubItemQuantity = React.useCallback((subItem: any, unitSymbol: string) => {
     const n = Number(subItem?.nos) || 0
     const l = Number(subItem?.length) || 0
     const b = Number(subItem?.breadth) || 0
     const d = Number(subItem?.depth) || 0
+    const s = (unitSymbol || "").toLowerCase()
 
-    switch (unitSymbol) {
-      case "nos":
-        return n
-      case "m":
-        return n * l
-      case "m2":
-        return n * l * b
-      case "m3":
-        return n * l * b * d
-      case "kg":
-      case "bag":
-      case "mt":
-        return n
-      default: {
-        const hasAnyDim = l > 0 || b > 0 || d > 0
-        const dims = (l || 1) * (b || 1) * (d || 1)
-        return hasAnyDim ? (n > 0 ? n * dims : dims) : n
-      }
-    }
+    if (s === "nos" || s.includes("each")) return n
+    if (s === "m" || s === "rm" || s.includes("running")) return n * l
+    if (isAreaUnit(s)) return n * l * b
+    if (isVolumeUnit(s)) return n * l * b * d
+    if (s === "kg" || s === "bag" || s === "mt") return n
+    const hasAnyDim = l > 0 || b > 0 || d > 0
+    const dims = (l || 1) * (b || 1) * (d || 1)
+    return hasAnyDim ? (n > 0 ? n * dims : dims) : n
   }, [])
 
   const calculatedQuantity = React.useMemo(() => {
@@ -664,7 +665,10 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                                     step="0.01"
                                     placeholder="Nos"
                                     value={field.value ?? ""}
-                                    onChange={field.onChange}
+                                    onChange={(e) => {
+                                      const v = e.target.value
+                                      field.onChange(v)
+                                    }}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -683,7 +687,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                                     step="0.01"
                                     placeholder="Length"
                                     value={field.value ?? ""}
-                                    onChange={field.onChange}
+                                    onChange={(e) => field.onChange(e.target.value)}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -702,7 +706,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                                     step="0.01"
                                     placeholder="Breadth"
                                     value={field.value ?? ""}
-                                    onChange={field.onChange}
+                                    onChange={(e) => field.onChange(e.target.value)}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -721,7 +725,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                                     step="0.01"
                                     placeholder="Depth"
                                     value={field.value ?? ""}
-                                    onChange={field.onChange}
+                                    onChange={(e) => field.onChange(e.target.value)}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -732,7 +736,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                             <FormLabel className="text-xs">Sub-total</FormLabel>
                             <p className="text-sm font-medium text-primary py-2">
                               {(() => {
-                                const sub = watchedSubItems?.[index]
+                                const sub = (form.getValues(`subItems.${index}`) as any) || {}
                                 return calculateSubItemQuantity(sub, selectedUnitSymbol).toFixed(3)
                               })()} {selectedUnitSymbol}
                             </p>

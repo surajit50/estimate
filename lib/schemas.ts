@@ -11,6 +11,11 @@ export const estimateSchema = z.object({
   description: z.string().optional().default(""),
   location: z.string().optional().default(""),
   activityCode: z.string().optional().default(""),
+  cgstPercent: z.coerce.number().min(0).max(100).default(0),
+  sgstPercent: z.coerce.number().min(0).max(100).default(0),
+  cessPercent: z.coerce.number().min(0).max(100).default(0),
+  contingency: z.coerce.number().min(0).max(100).default(0),
+  contractualPercent: z.coerce.number().min(0).max(100).default(0),
 })
 
 export type EstimateFormValues = z.infer<typeof estimateSchema>
