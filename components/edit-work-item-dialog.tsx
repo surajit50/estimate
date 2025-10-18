@@ -3,7 +3,7 @@
 import * as React from "react"
 
 import { useEffect } from "react"
-import { useForm, useFieldArray } from "react-hook-form"
+import { useForm, useFieldArray, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/button"
 import {
@@ -166,11 +166,11 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
     }
   }, [item, form])
 
-  const watch = form.watch
-  const watchedRate = watch("rate")
-  const watchedUnitId = watch("unitId")
-  const watchedSubItems = watch("subItems")
-  const watchedSubCategories = watch("subCategories")
+  // Reactive watchers for totals (works well with Field Arrays)
+  const watchedRate = Number(useWatch({ control: form.control, name: "rate" }) ?? 0)
+  const watchedUnitId = useWatch({ control: form.control, name: "unitId" }) ?? ""
+  const watchedSubItems = (useWatch({ control: form.control, name: "subItems" }) as any[]) || []
+  const watchedSubCategories = (useWatch({ control: form.control, name: "subCategories" }) as any[]) || []
 
   const selectedUnitSymbol = React.useMemo(
     () => units.find((u) => u.id === watchedUnitId)?.unitSymbol || "",
@@ -665,7 +665,10 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                                     step="0.01"
                                     placeholder="Nos"
                                     value={field.value ?? ""}
-                                    onChange={field.onChange}
+                                    onChange={(e) => {
+                                      const v = e.target.value
+                                      field.onChange(v)
+                                    }}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -684,7 +687,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                                     step="0.01"
                                     placeholder="Length"
                                     value={field.value ?? ""}
-                                    onChange={field.onChange}
+                                    onChange={(e) => field.onChange(e.target.value)}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -703,7 +706,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                                     step="0.01"
                                     placeholder="Breadth"
                                     value={field.value ?? ""}
-                                    onChange={field.onChange}
+                                    onChange={(e) => field.onChange(e.target.value)}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -722,7 +725,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                                     step="0.01"
                                     placeholder="Depth"
                                     value={field.value ?? ""}
-                                    onChange={field.onChange}
+                                    onChange={(e) => field.onChange(e.target.value)}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -733,7 +736,7 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
                             <FormLabel className="text-xs">Sub-total</FormLabel>
                             <p className="text-sm font-medium text-primary py-2">
                               {(() => {
-                                const sub = watchedSubItems?.[index]
+                                const sub = (form.getValues(`subItems.${index}`) as any) || {}
                                 return calculateSubItemQuantity(sub, selectedUnitSymbol).toFixed(3)
                               })()} {selectedUnitSymbol}
                             </p>
