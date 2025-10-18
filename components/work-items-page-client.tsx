@@ -95,7 +95,18 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
   const formRef = useRef<HTMLFormElement>(null)
 
   // Calculate totals
-  const totalAmount = workItems.reduce((sum, item) => sum + item.amount, 0)
+  // Display total is derived from computed quantity × rate to keep the table consistent
+  const computeDisplayQuantity = (item: WorkItemWithUnit) => {
+    return computeQuantityForUnit({
+      unitId: item.unitId,
+      length: item.length,
+      width: item.width,
+      height: item.height,
+      quantity: item.quantity,
+    })
+  }
+  const computeDisplayAmount = (item: WorkItemWithUnit) => computeDisplayQuantity(item) * (item.rate || 0)
+  const totalAmount = workItems.reduce((sum, item) => sum + computeDisplayAmount(item), 0)
   const totalMaterialCost = workItems.reduce((sum, item) => sum + (item.materialCost || 0), 0)
   const totalLaborCost = workItems.reduce((sum, item) => sum + (item.laborCost || 0), 0)
   const totalEquipmentCost = workItems.reduce((sum, item) => sum + (item.equipmentCost || 0), 0)
@@ -111,24 +122,52 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
 
   const isAreaUnit = (unitSymbol: string) => {
     const s = unitSymbol.trim().toLowerCase()
-    return s === "m2" || s === "m²" || s === "sqm" || s === "sq m" || s === "sq. m"
+    return (
+      s === "m2" ||
+      s === "m²" ||
+      s === "sqm" ||
+      s === "sq m" ||
+      s === "sq. m" ||
+      s.includes("square")
+    )
   }
 
   const isVolumeUnit = (unitSymbol: string) => {
     const s = unitSymbol.trim().toLowerCase()
-    return s === "m3" || s === "m³" || s === "cum" || s === "cu m" || s === "cu. m"
+    return (
+      s === "m3" ||
+      s === "m³" ||
+      s === "cum" ||
+      s === "cu m" ||
+      s === "cu. m" ||
+      s.includes("cubic")
+    )
   }
 
-  const computeQuantityForUnit = (item: { unitId: string; length: number; width: number; height: number; quantity: number; }) => {
+  const isLinearUnit = (unitSymbol: string) => {
+    const s = unitSymbol.trim().toLowerCase()
+    return s === "m" || s === "rm" || s === "running meter" || s === "running metre" || s === "meter" || s === "metre" || s === "mtr"
+  }
+
+  const computeQuantityForUnit = (item: { unitId: string; length: number; width: number; height: number; quantity: number }) => {
     const unit = units.find(u => u.id === item.unitId)
     const unitSymbol = unit?.unitSymbol || ""
+    const l = Number(item.length) || 0
+    const w = Number(item.width) || 0
+    const h = Number(item.height) || 0
+    const q = Number(item.quantity) || 0
     if (isAreaUnit(unitSymbol)) {
-      return (item.length || 0) * (item.width || 0)
+      const calc = l * w
+      return calc > 0 ? calc : q
     }
     if (isVolumeUnit(unitSymbol)) {
-      return (item.length || 0) * (item.width || 0) * (item.height || 0)
+      const calc = l * w * h
+      return calc > 0 ? calc : q
     }
-    return item.quantity || 0
+    if (isLinearUnit(unitSymbol)) {
+      return l > 0 ? l : q
+    }
+    return q
   }
 
   const calculateAmount = (item: NewWorkItemForm) => {
@@ -262,15 +301,11 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
     return units.find(u => u.id === unitId)?.unitSymbol || ""
   }
 
-  const getCalculatedQuantity = (item: WorkItemWithUnit) => {
-    return computeQuantityForUnit({
-      unitId: item.unitId,
-      length: item.length,
-      width: item.width,
-      height: item.height,
-      quantity: item.quantity,
-    })
-  }
+  const getCalculatedQuantity = (item: WorkItemWithUnit) => computeDisplayQuantity(item)
+
+  const formatQty = (val: number) => Number(val || 0).toFixed(3)
+  const formatRate = (val: number) => Number(val || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const formatAmount = (val: number) => `₹${Number(val || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
   // Keep quantity in sync for computed units while editing the new item form
   useEffect(() => {
@@ -553,13 +588,13 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm">
-                            {getCalculatedQuantity(item).toFixed(3)}
+                            {formatQty(getCalculatedQuantity(item))}
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm">
-                            {item.rate.toFixed(2)}
+                            {formatRate(item.rate)}
                           </TableCell>
                           <TableCell className="text-right font-medium font-mono">
-                            ₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                            {formatAmount(computeDisplayAmount(item))}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -596,7 +631,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
                           Total Estimate:
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          ₹{totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                          {formatAmount(totalAmount)}
                         </TableCell>
                         <TableCell></TableCell>
                       </TableRow>

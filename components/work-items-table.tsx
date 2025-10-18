@@ -74,6 +74,11 @@ function deriveQuantity(wi: WorkItemWithUnit, units: UnitMasterType[]): number {
     }
   }
   
+  // For linear meters, use length if present
+  if (unitSymbol === "m" || unitSymbol === "rm" || unitSymbol === "running meter" || unitSymbol === "running metre" || unitSymbol === "mtr") {
+    const length = isNumber(wi.length) ? wi.length : 0
+    if (length > 0) return length
+  }
   // For other units, use the quantity directly
   return isNumber(wi.quantity) ? wi.quantity : 0
 }
@@ -103,8 +108,12 @@ function deriveAmount(wi: WorkItemWithUnit, qty: number, units: UnitMasterType[]
       calculatedQuantity = length * width * height
     }
   }
+  // For linear meters, use length if present
+  if (unitSymbol === "m" || unitSymbol === "rm" || unitSymbol === "running meter" || unitSymbol === "running metre" || unitSymbol === "mtr") {
+    const length = isNumber(wi.length) ? wi.length : 0
+    if (length > 0) calculatedQuantity = length
+  }
   // For other units, use the provided quantity directly
-  
   return calculatedQuantity * rate
 }
 
