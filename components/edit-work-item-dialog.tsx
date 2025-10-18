@@ -172,35 +172,36 @@ export function EditWorkItemDialog({ item, onOpenChange, onEdit, units, rates }:
   const watchedSubItems = watch("subItems")
   const watchedSubCategories = watch("subCategories")
 
-  const selectedUnitSymbol = React.useMemo(() => {
-    return units.find((u) => u.id === watchedUnitId)?.unitSymbol || ""
-  }, [units, watchedUnitId])
+  const selectedUnitSymbol = React.useMemo(
+    () => units.find((u) => u.id === watchedUnitId)?.unitSymbol || "",
+    [units, watchedUnitId]
+  )
+
+  // Simple helpers to guide quantity behavior
+  const isAreaUnit = (symbol: string) => {
+    const s = (symbol || "").toLowerCase()
+    return s === "m2" || s === "m²" || s.includes("square") || s === "sqm"
+  }
+  const isVolumeUnit = (symbol: string) => {
+    const s = (symbol || "").toLowerCase()
+    return s === "m3" || s === "m³" || s.includes("cubic") || s === "cum"
+  }
 
   const calculateSubItemQuantity = React.useCallback((subItem: any, unitSymbol: string) => {
     const n = Number(subItem?.nos) || 0
     const l = Number(subItem?.length) || 0
     const b = Number(subItem?.breadth) || 0
     const d = Number(subItem?.depth) || 0
+    const s = (unitSymbol || "").toLowerCase()
 
-    switch (unitSymbol) {
-      case "nos":
-        return n
-      case "m":
-        return n * l
-      case "m2":
-        return n * l * b
-      case "m3":
-        return n * l * b * d
-      case "kg":
-      case "bag":
-      case "mt":
-        return n
-      default: {
-        const hasAnyDim = l > 0 || b > 0 || d > 0
-        const dims = (l || 1) * (b || 1) * (d || 1)
-        return hasAnyDim ? (n > 0 ? n * dims : dims) : n
-      }
-    }
+    if (s === "nos" || s.includes("each")) return n
+    if (s === "m" || s === "rm" || s.includes("running")) return n * l
+    if (isAreaUnit(s)) return n * l * b
+    if (isVolumeUnit(s)) return n * l * b * d
+    if (s === "kg" || s === "bag" || s === "mt") return n
+    const hasAnyDim = l > 0 || b > 0 || d > 0
+    const dims = (l || 1) * (b || 1) * (d || 1)
+    return hasAnyDim ? (n > 0 ? n * dims : dims) : n
   }, [])
 
   const calculatedQuantity = React.useMemo(() => {
