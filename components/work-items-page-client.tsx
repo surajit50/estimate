@@ -94,23 +94,7 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
 
   const formRef = useRef<HTMLFormElement>(null)
 
-  // Calculate totals
-  // Display total is derived from computed quantity × rate to keep the table consistent
-  const computeDisplayQuantity = (item: WorkItemWithUnit) => {
-    return computeQuantityForUnit({
-      unitId: item.unitId,
-      length: item.length,
-      width: item.width,
-      height: item.height,
-      quantity: item.quantity,
-    })
-  }
-  const computeDisplayAmount = (item: WorkItemWithUnit) => computeDisplayQuantity(item) * (item.rate || 0)
-  const totalAmount = workItems.reduce((sum, item) => sum + computeDisplayAmount(item), 0)
-  const totalMaterialCost = workItems.reduce((sum, item) => sum + (item.materialCost || 0), 0)
-  const totalLaborCost = workItems.reduce((sum, item) => sum + (item.laborCost || 0), 0)
-  const totalEquipmentCost = workItems.reduce((sum, item) => sum + (item.equipmentCost || 0), 0)
-  const totalOverheadCost = workItems.reduce((sum, item) => sum + (item.overheadCost || 0), 0)
+  // Calculate totals — helpers declared later after quantity calculator initialization
 
   const nextItemNo = workItems.length > 0 ? Math.max(...workItems.map(item => item.itemNo)) + 1 : 1
 
@@ -169,6 +153,22 @@ export function WorkItemsPageClient({ estimate, units, rates, allWorkItems }: Wo
     }
     return q
   }
+
+  // Helpers dependent on computeQuantityForUnit
+  const computeDisplayQuantity = (item: WorkItemWithUnit) =>
+    computeQuantityForUnit({
+      unitId: item.unitId,
+      length: item.length,
+      width: item.width,
+      height: item.height,
+      quantity: item.quantity,
+    })
+  const computeDisplayAmount = (item: WorkItemWithUnit) => computeDisplayQuantity(item) * (item.rate || 0)
+  const totalAmount = workItems.reduce((sum, item) => sum + computeDisplayAmount(item), 0)
+  const totalMaterialCost = workItems.reduce((sum, item) => sum + (item.materialCost || 0), 0)
+  const totalLaborCost = workItems.reduce((sum, item) => sum + (item.laborCost || 0), 0)
+  const totalEquipmentCost = workItems.reduce((sum, item) => sum + (item.equipmentCost || 0), 0)
+  const totalOverheadCost = workItems.reduce((sum, item) => sum + (item.overheadCost || 0), 0)
 
   const calculateAmount = (item: NewWorkItemForm) => {
     const calculatedQuantity = computeQuantityForUnit(item)
