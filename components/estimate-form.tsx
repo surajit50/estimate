@@ -26,6 +26,11 @@ interface EstimateFormProps {
     description: string | null
     location: string | null
     activityCode?: string | null
+    cgstPercent?: number | null
+    sgstPercent?: number | null
+    cessPercent?: number | null
+    contingency?: number | null
+    contractualPercent?: number | null
     
   }
 }
@@ -44,6 +49,11 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
       description: estimate?.description || "",
       location: estimate?.location || "",
       activityCode: estimate?.activityCode || "",
+      cgstPercent: Number(estimate?.cgstPercent ?? 0),
+      sgstPercent: Number(estimate?.sgstPercent ?? 0),
+      cessPercent: Number(estimate?.cessPercent ?? 0),
+      contingency: Number(estimate?.contingency ?? 0),
+      contractualPercent: Number(estimate?.contractualPercent ?? 0),
       
       
     },
@@ -160,6 +170,83 @@ export function EstimateForm({ estimate }: EstimateFormProps) {
                   </FormItem>
                 )}
               />
+
+              {/* Financial configuration */}
+              <h3 className="text-lg font-semibold text-foreground border-b pb-2 mt-4">Financial Configuration</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="cgstPercent"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CGST %</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} value={field.value ?? 0} />
+                      </FormControl>
+                      <FormDescription>Central GST percentage.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="sgstPercent"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>SGST %</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} value={field.value ?? 0} />
+                      </FormControl>
+                      <FormDescription>State GST percentage.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="cessPercent"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>L.W. Cess %</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} value={field.value ?? 0} />
+                      </FormControl>
+                      <FormDescription>Labour Welfare Cess percentage.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="contingency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contingency %</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} value={field.value ?? 0} />
+                      </FormControl>
+                      <FormDescription>Contingencies over item total.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="contractualPercent"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Less Contractual %</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} value={field.value ?? 0} />
+                      </FormControl>
+                      <FormDescription>Deduction before taxes in Abstract Bill.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <FormField
                 control={form.control}

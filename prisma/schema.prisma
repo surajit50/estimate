@@ -20,6 +20,14 @@ model Estimate {
   parameters      Json?            // Store project-specific parameters like dimensions, slopes, etc.
   isFrozen        Boolean          @default(false)
 
+  // Financial configuration (percentages)
+  // Stored on Estimate so Abstract Bills and exports use consistent values
+  cgstPercent     Float            @default(0)
+  sgstPercent     Float            @default(0)
+  cessPercent     Float            @default(0)
+  contingency     Float            @default(0)   // contingency percentage
+  contractualPercent Float         @default(0)   // Less contractual percentage
+
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   workItems       WorkItem[]

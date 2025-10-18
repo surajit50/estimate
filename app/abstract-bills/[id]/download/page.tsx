@@ -28,13 +28,22 @@ export default async function AbstractBillDownloadPage({ params }: { params: Pro
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(amount)
 
   const total = abstractBill.items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0)
-  const cgstPercent = 0
-  const sgstPercent = 0
-  const cessPercent = 0
-  const cgst = (total * cgstPercent) / 100
-  const sgst = (total * sgstPercent) / 100
-  const cess = (total * cessPercent) / 100
-  const gross = total + cgst + sgst + cess
+  // Pull financial configuration from parent estimate
+  const estimate = abstractBill.measurementBook.estimate as any
+  const cgstPercent = Number(estimate?.cgstPercent ?? 0)
+  const sgstPercent = Number(estimate?.sgstPercent ?? 0)
+  const cessPercent = Number(estimate?.cessPercent ?? 0)
+  const contractualPercent = Number(estimate?.contractualPercent ?? 0)
+  const contingency = Number(estimate?.contingency ?? 0)
+
+  const contractualLess = (total * contractualPercent) / 100
+  const afterLess = total - contractualLess
+  const contingencyAmt = (afterLess * contingency) / 100
+  const taxableBase = afterLess + contingencyAmt
+  const cgst = (taxableBase * cgstPercent) / 100
+  const sgst = (taxableBase * sgstPercent) / 100
+  const cess = (taxableBase * cessPercent) / 100
+  const gross = taxableBase + cgst + sgst + cess
 
   return (
     <div className="p-8 print:p-0">
@@ -102,7 +111,14 @@ export default async function AbstractBillDownloadPage({ params }: { params: Pro
         <div className="mt-4 grid grid-cols-2 gap-6 text-sm">
           <div></div>
           <div className="border rounded p-3">
-            <div className="flex justify-between py-1"><span>Actual Value of Work done</span><span>{formatCurrency(total)}</span></div>
+            <div className="flex justify-between py-1"><span>Itemwise Total</span><span>{formatCurrency(total)}</span></div>
+            {contractualPercent > 0 && (
+              <div className="flex justify-between py-1"><span>Less contractual percentage @ {contractualPercent.toFixed(2)}%</span><span>-{formatCurrency(contractualLess)}</span></div>
+            )}
+            {contingency > 0 && (
+              <div className="flex justify-between py-1"><span>Add for contingency L.S. @ {contingency.toFixed(2)}%</span><span>{formatCurrency(contingencyAmt)}</span></div>
+            )}
+            <div className="flex justify-between py-1 border-t mt-2 font-semibold"><span>Actual Value of Work done</span><span>{formatCurrency(taxableBase)}</span></div>
             <div className="flex justify-between py-1"><span>Add CGST @ {cgstPercent.toFixed(2)}%</span><span>{formatCurrency(cgst)}</span></div>
             <div className="flex justify-between py-1"><span>Add SGST @ {sgstPercent.toFixed(2)}%</span><span>{formatCurrency(sgst)}</span></div>
             <div className="flex justify-between py-1"><span>Add L.W. Cess @ {cessPercent.toFixed(2)}%</span><span>{formatCurrency(cess)}</span></div>
