@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { ArrowLeft, Download, FileSpreadsheet, Plus, Save, X, Edit, Trash2, Check } from "lucide-react"
+import { Download, FileSpreadsheet } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
