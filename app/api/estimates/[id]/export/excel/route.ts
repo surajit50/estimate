@@ -2,8 +2,8 @@ import { prisma } from "@/lib/db"
 import { sanitizeFilename } from "@/lib/export-utils"
 import XLSX from "xlsx"
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
-  const id = params.id
+export async function GET(_req: Request, ctx: any) {
+  const id = ctx?.params?.id as string
   const estimate = await prisma.estimate.findUnique({
     where: { id },
     include: { workItems: { include: { unit: true }, orderBy: { itemNo: "asc" } } },
